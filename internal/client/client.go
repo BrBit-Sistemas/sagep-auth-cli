@@ -92,7 +92,7 @@ func (c *AuthClient) SyncApplication(ctx context.Context, m *manifest.AuthManife
 		req.Header.Set("X-Timestamp", fmt.Sprintf("%d", timestamp))
 	} else if c.Token != "" {
 		// Usar JWT para uso normal
-		req.Header.Set("Authorization", "Bearer "+c.Token)
+	req.Header.Set("Authorization", "Bearer "+c.Token)
 	} else {
 		return nil, fmt.Errorf("SAGEP_AUTH_SECRET ou SAGEP_AUTH_TOKEN é obrigatório")
 	}
