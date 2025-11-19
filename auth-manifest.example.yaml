@@ -1,0 +1,32 @@
+# Exemplo de manifest para sincronização com sagep-auth
+# Copie este arquivo para auth-manifest.yaml e ajuste conforme necessário
+
+application:
+  code: sagep-biopass
+  name: SAGEP Biopass
+  description: Sistema de controle de ponto biométrico
+
+permissions:
+  - code: biopass.devices.read
+    description: Listar e visualizar dispositivos
+  - code: biopass.devices.create
+    description: Criar dispositivos
+  - code: biopass.devices.update
+    description: Atualizar dispositivos
+  - code: biopass.devices.delete
+    description: Excluir dispositivos
+
+roles:
+  - code: BIOPASS_ADMIN
+    name: Administrador Biopass
+    system: true
+    description: Acesso total ao sistema Biopass
+    permissions:
+      - biopass.*
+  - code: BIOPASS_DEVICES_READONLY
+    name: Consulta de Dispositivos Biopass
+    system: true
+    description: Apenas leitura de dispositivos
+    permissions:
+      - biopass.devices.read
+
