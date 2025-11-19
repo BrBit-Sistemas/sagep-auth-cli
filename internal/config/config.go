@@ -11,14 +11,15 @@ import (
 
 // Config contém as configurações do CLI
 type Config struct {
-	AuthURL   string
-	AuthToken string
+	AuthURL    string
+	AuthToken  string // JWT token (uso normal)
+	AuthSecret string // Secret para HMAC (bootstrap)
 }
 
 // LoadConfig carrega a configuração a partir de flags, arquivo .env e variáveis de ambiente
 // Ordem de precedência: flags > .env > env vars do sistema
-// As variáveis SAGEP_AUTH_URL e SAGEP_AUTH_TOKEN são obrigatórias
-func LoadConfig(authURLFlag, authTokenFlag string) (*Config, error) {
+// As variáveis SAGEP_AUTH_URL e (SAGEP_AUTH_SECRET ou SAGEP_AUTH_TOKEN) são obrigatórias
+func LoadConfig(authURLFlag, authTokenFlag, authSecretFlag string) (*Config, error) {
 	// Tentar carregar arquivo .env (se existir)
 	// Primeiro tenta no diretório atual, depois procura a raiz do projeto
 	envPath := ".env"
@@ -53,15 +54,23 @@ func LoadConfig(authURLFlag, authTokenFlag string) (*Config, error) {
 		cfg.AuthURL = strings.TrimSuffix(envURL, "/")
 	}
 
-	// Token: flag > .env > env vars do sistema
+	// Token: flag > .env > env vars do sistema (opcional se tiver secret)
 	if authTokenFlag != "" {
 		cfg.AuthToken = authTokenFlag
 	} else {
-		envToken := os.Getenv("SAGEP_AUTH_TOKEN")
-		if envToken == "" {
-			return nil, fmt.Errorf("SAGEP_AUTH_TOKEN é obrigatória. Configure via --token, arquivo .env ou variável de ambiente")
-		}
-		cfg.AuthToken = envToken
+		cfg.AuthToken = os.Getenv("SAGEP_AUTH_TOKEN")
+	}
+
+	// Secret: flag > .env > env vars do sistema (opcional se tiver token)
+	if authSecretFlag != "" {
+		cfg.AuthSecret = authSecretFlag
+	} else {
+		cfg.AuthSecret = os.Getenv("SAGEP_AUTH_SECRET")
+	}
+
+	// Validar que tem pelo menos um (token OU secret)
+	if cfg.AuthToken == "" && cfg.AuthSecret == "" {
+		return nil, fmt.Errorf("SAGEP_AUTH_TOKEN ou SAGEP_AUTH_SECRET é obrigatório. Configure via --token/--secret, arquivo .env ou variável de ambiente")
 	}
 
 	return cfg, nil

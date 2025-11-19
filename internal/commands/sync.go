@@ -19,7 +19,7 @@ func RunSync(manifestPath string, cfg *config.Config) error {
 	}
 
 	// Criar cliente
-	authClient := client.NewAuthClient(cfg.AuthURL, cfg.AuthToken)
+	authClient := client.NewAuthClient(cfg.AuthURL, cfg.AuthToken, cfg.AuthSecret)
 
 	// Exibir informações iniciais
 	fmt.Printf("Sincronizando aplicação: %s\n", m.Application.Code)

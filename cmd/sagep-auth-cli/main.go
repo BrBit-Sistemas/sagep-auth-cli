@@ -19,7 +19,8 @@ func main() {
 		manifestPath = flag.String("manifest", defaultManifestPath, "Caminho do arquivo manifest YAML")
 		manifestPathShort = flag.String("m", defaultManifestPath, "Caminho do arquivo manifest YAML (short)")
 		authURL = flag.String("url", "", "URL base do serviço sagep-auth (override)")
-		authToken = flag.String("token", "", "Token de autenticação (override)")
+		authToken = flag.String("token", "", "Token JWT de autenticação (override, uso normal)")
+		authSecret = flag.String("secret", "", "Secret compartilhado para HMAC (override, bootstrap)")
 		help = flag.Bool("help", false, "Exibir ajuda")
 	)
 
@@ -30,8 +31,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Opções:\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nVariáveis de ambiente:\n")
-		fmt.Fprintf(os.Stderr, "  SAGEP_AUTH_URL     URL base do serviço sagep-auth\n")
-		fmt.Fprintf(os.Stderr, "  SAGEP_AUTH_TOKEN   Token de autenticação\n\n")
+		fmt.Fprintf(os.Stderr, "  SAGEP_AUTH_URL     URL base do serviço sagep-auth (obrigatório)\n")
+		fmt.Fprintf(os.Stderr, "  SAGEP_AUTH_SECRET  Secret compartilhado para HMAC (bootstrap, opcional se tiver TOKEN)\n")
+		fmt.Fprintf(os.Stderr, "  SAGEP_AUTH_TOKEN   Token JWT (uso normal, opcional se tiver SECRET)\n")
+		fmt.Fprintf(os.Stderr, "\n  Você precisa configurar pelo menos um: SAGEP_AUTH_SECRET ou SAGEP_AUTH_TOKEN\n\n")
 		fmt.Fprintf(os.Stderr, "Exemplos:\n")
 		fmt.Fprintf(os.Stderr, "  %s --manifest ./auth-manifest.yaml sync\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -m ./auth-manifest.yaml sync\n", os.Args[0])
@@ -73,7 +76,7 @@ func main() {
 	switch command {
 	case "sync":
 		// Carregar configuração
-		cfg, err := config.LoadConfig(*authURL, *authToken)
+		cfg, err := config.LoadConfig(*authURL, *authToken, *authSecret)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Erro de configuração: %v\n", err)
 			os.Exit(1)

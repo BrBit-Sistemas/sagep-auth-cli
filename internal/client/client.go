@@ -3,6 +3,9 @@ package client
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,14 +19,16 @@ import (
 type AuthClient struct {
 	BaseURL    string
 	Token      string
+	Secret     string // Secret para HMAC (bootstrap)
 	HTTPClient *http.Client
 }
 
 // NewAuthClient cria uma nova instância do AuthClient
-func NewAuthClient(baseURL, token string) *AuthClient {
+func NewAuthClient(baseURL, token, secret string) *AuthClient {
 	return &AuthClient{
 		BaseURL: baseURL,
 		Token:   token,
+		Secret:  secret,
 		HTTPClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -52,6 +57,14 @@ type SyncResponse struct {
 	Roles       []SyncRoleResultDTO `json:"roles"`
 }
 
+// calculateHMAC calcula a assinatura HMAC do body + timestamp
+func calculateHMAC(body []byte, timestamp int64, secret string) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write(body)
+	mac.Write([]byte(fmt.Sprintf("%d", timestamp)))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
 // SyncApplication envia o manifest para o endpoint de sync do sagep-auth
 func (c *AuthClient) SyncApplication(ctx context.Context, m *manifest.AuthManifest) (*SyncResponse, error) {
 	// Converter manifest para JSON
@@ -69,7 +82,20 @@ func (c *AuthClient) SyncApplication(ctx context.Context, m *manifest.AuthManife
 
 	// Headers
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.Token)
+	
+	// Autenticação: HMAC (bootstrap) OU JWT (uso normal)
+	if c.Secret != "" {
+		// Usar HMAC para bootstrap
+		timestamp := time.Now().Unix()
+		signature := calculateHMAC(payload, timestamp, c.Secret)
+		req.Header.Set("X-Signature", signature)
+		req.Header.Set("X-Timestamp", fmt.Sprintf("%d", timestamp))
+	} else if c.Token != "" {
+		// Usar JWT para uso normal
+		req.Header.Set("Authorization", "Bearer "+c.Token)
+	} else {
+		return nil, fmt.Errorf("SAGEP_AUTH_SECRET ou SAGEP_AUTH_TOKEN é obrigatório")
+	}
 
 	// Executar requisição
 	resp, err := c.HTTPClient.Do(req)

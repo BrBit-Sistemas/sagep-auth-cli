@@ -99,31 +99,61 @@ O CLI suporta um arquivo `.env` na raiz do projeto para configurar as variáveis
 cp .env.example .env
 ```
 
+**Importante:** Edite o arquivo `.env` e configure:
+
+- `SAGEP_AUTH_URL`: URL do serviço sagep-auth (obrigatório)
+- `SAGEP_AUTH_SECRET`: Secret compartilhado para HMAC (bootstrap) **OU**
+- `SAGEP_AUTH_TOKEN`: Token JWT (uso normal após bootstrap)
+
+Você precisa configurar **pelo menos um** (`SAGEP_AUTH_SECRET` ou `SAGEP_AUTH_TOKEN`).
+
 **Segundo passo:** Edite o arquivo `.env` e preencha com seus valores:
+
+**Opção 1: Bootstrap inicial (sem aplicação/usuário ainda)**
+
+```env
+SAGEP_AUTH_URL=http://localhost:8080
+SAGEP_AUTH_SECRET=seu-secret-compartilhado-aqui
+```
+
+**Opção 2: Uso normal (após bootstrap, com autenticação JWT)**
 
 ```env
 SAGEP_AUTH_URL=https://auth.sagep.com.br
-SAGEP_AUTH_TOKEN=seu-token-aqui
+SAGEP_AUTH_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 **Importante:** O arquivo `.env` está no `.gitignore` e não será commitado no repositório.
 
-### Variáveis de Ambiente Obrigatórias
+### Variáveis de Ambiente
 
-As seguintes variáveis são **obrigatórias** e devem ser configuradas:
+#### Obrigatória
 
-- `SAGEP_AUTH_URL`: URL base do serviço sagep-auth (ex: `https://auth.sagep.com.br`)
-- `SAGEP_AUTH_TOKEN`: Token ou API key para autenticação na API do auth
+- `SAGEP_AUTH_URL`: URL base do serviço sagep-auth (ex: `https://auth.sagep.com.br` ou `http://localhost:8080`)
+
+#### Autenticação (escolha uma opção)
+
+Você precisa configurar **pelo menos uma** das seguintes variáveis:
+
+- **`SAGEP_AUTH_SECRET`** (Recomendado para bootstrap): Secret compartilhado com o servidor `sagep-auth` para autenticação HMAC. Deve ser o mesmo valor de `BOOTSTRAP_SECRET` no servidor. Permite criar aplicações iniciais sem autenticação JWT.
+  - **Gere um secret seguro:** `openssl rand -base64 32`
+  
+- **`SAGEP_AUTH_TOKEN`** (Uso normal após bootstrap): Token JWT obtido via autenticação. Use quando a aplicação já foi criada e você tem um usuário/token.
+
+**Como funciona:**
+- Se `SAGEP_AUTH_SECRET` estiver configurado → CLI usa HMAC (bootstrap)
+- Se `SAGEP_AUTH_TOKEN` estiver configurado → CLI usa JWT (uso normal)
+- O servidor `sagep-auth` aceita ambos no endpoint `/applications/sync`
 
 **Nota sobre `GOPRIVATE`:** Esta variável de ambiente do Go **não é necessária** para o funcionamento do CLI. Ela é uma configuração do ambiente Go que afeta como o Go baixa módulos. Se você tiver problemas ao instalar o CLI via `go install`, verifique se `GOPRIVATE` não está configurado para `github.com/BrBit-Sistemas` (veja seção de instalação acima).
 
 ### Ordem de Precedência
 
-1. **Flags de linha de comando** (maior precedência) - `--url` e `--token`
+1. **Flags de linha de comando** (maior precedência) - `--url`, `--token` ou `--secret`
 2. **Arquivo `.env`** - na raiz do projeto
-3. **Variáveis de ambiente do sistema** - `SAGEP_AUTH_URL` e `SAGEP_AUTH_TOKEN`
+3. **Variáveis de ambiente do sistema** - `SAGEP_AUTH_URL`, `SAGEP_AUTH_SECRET` ou `SAGEP_AUTH_TOKEN`
 
-**Nota:** Se nenhuma das opções acima fornecer as variáveis obrigatórias, o CLI retornará um erro.
+**Nota:** Se nenhuma das opções acima fornecer `SAGEP_AUTH_URL` e pelo menos uma das opções de autenticação (`SAGEP_AUTH_SECRET` ou `SAGEP_AUTH_TOKEN`), o CLI retornará um erro.
 
 ## Uso
 
@@ -151,16 +181,21 @@ sagep-auth-cli sync --manifest ./auth-manifest.yaml
 # Certifique-se de ter o arquivo .env configurado na raiz do projeto
 sagep-auth-cli --manifest ./auth-manifest.yaml sync
 
-# Opção 2: Usando variáveis de ambiente do sistema
+# Opção 2: Usando variáveis de ambiente do sistema (bootstrap com HMAC)
 export SAGEP_AUTH_URL=https://auth.sagep.com.br
-export SAGEP_AUTH_TOKEN=seu-token-aqui
+export SAGEP_AUTH_SECRET=seu-secret-compartilhado
+sagep-auth-cli --manifest ./auth-manifest.yaml sync
+
+# Opção 2b: Usando variáveis de ambiente do sistema (uso normal com JWT)
+export SAGEP_AUTH_URL=https://auth.sagep.com.br
+export SAGEP_AUTH_TOKEN=seu-token-jwt-aqui
 sagep-auth-cli --manifest ./auth-manifest.yaml sync
 
 # Opção 3: Usando flags (override completo)
 sagep-auth-cli \
   --manifest ./auth-manifest.yaml \
   --url https://auth.sagep.com.br \
-  --token seu-token-aqui \
+  --token seu-token-jwt-aqui \
   sync
 
 # Opção 4: Usando flag curta para manifest
@@ -232,7 +267,15 @@ O manifest suporta wildcards em permissões. Qualquer prefixo seguido de `.*` ex
 O CLI foi projetado para ser usado em pipelines de CI/CD. Após o deploy (ou durante o build), execute o sync para garantir que o serviço de autenticação esteja atualizado com as permissões e roles base da aplicação:
 
 ```yaml
-# Exemplo para GitHub Actions
+# Exemplo para GitHub Actions (bootstrap com HMAC)
+- name: Sync Auth Manifest
+  env:
+    SAGEP_AUTH_URL: ${{ secrets.SAGEP_AUTH_URL }}
+    SAGEP_AUTH_SECRET: ${{ secrets.SAGEP_AUTH_SECRET }}
+  run: |
+    sagep-auth-cli sync --manifest ./auth-manifest.yaml
+
+# Exemplo para GitHub Actions (uso normal com JWT)
 - name: Sync Auth Manifest
   env:
     SAGEP_AUTH_URL: ${{ secrets.SAGEP_AUTH_URL }}
