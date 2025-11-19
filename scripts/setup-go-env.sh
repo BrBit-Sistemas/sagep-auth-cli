@@ -20,10 +20,31 @@ echo "  GONOPROXY:  ${CURRENT_GONOPROXY:-'(vazio)'}"
 echo "  GONOSUMDB:  ${CURRENT_GONOSUMDB:-'(vazio)'}"
 echo ""
 
-# Estratégia: Usar GONOPROXY e GONOSUMDB para permitir acesso público apenas ao sagep-auth-cli
-# Isso permite que GOPRIVATE mantenha github.com/BrBit-Sistemas para proteger outros repositórios
+# Estratégia:
+# 1. Garantir que GOPRIVATE contém github.com/BrBit-Sistemas (para proteger outros repositórios privados)
+# 2. Adicionar exceção via GONOPROXY/GONOSUMDB para permitir acesso público apenas ao sagep-auth-cli
 
 REPO_PUBLIC="github.com/BrBit-Sistemas/sagep-auth-cli"
+ORG_PRIVATE="github.com/BrBit-Sistemas"
+
+# Passo 1: Garantir que GOPRIVATE contém github.com/BrBit-Sistemas
+if [ -z "$CURRENT_GOPRIVATE" ]; then
+    echo "📝 Adicionando ${ORG_PRIVATE} ao GOPRIVATE (protege outros repositórios privados)..."
+    go env -w GOPRIVATE="$ORG_PRIVATE"
+    CURRENT_GOPRIVATE="$ORG_PRIVATE"
+elif ! echo "$CURRENT_GOPRIVATE" | tr ',' '\n' | grep -q "^${ORG_PRIVATE}$"; then
+    # Adicionar se não estiver presente
+    echo "📝 Adicionando ${ORG_PRIVATE} ao GOPRIVATE (protege outros repositórios privados)..."
+    NEW_GOPRIVATE="${CURRENT_GOPRIVATE},${ORG_PRIVATE}"
+    go env -w GOPRIVATE="$NEW_GOPRIVATE"
+    CURRENT_GOPRIVATE="$NEW_GOPRIVATE"
+else
+    echo "✓ ${ORG_PRIVATE} já está no GOPRIVATE"
+fi
+
+# Passo 2: Adicionar exceção para o repositório público via GONOPROXY e GONOSUMDB
+echo ""
+echo "📝 Configurando exceções para ${REPO_PUBLIC}..."
 
 # Verificar se o repositório público já está nas exceções
 HAS_IN_GONOPROXY=false
@@ -89,18 +110,24 @@ FINAL_GONOSUMDB=$(go env GONOSUMDB)
 
 echo "  GOPRIVATE: ${FINAL_GOPRIVATE:-'(vazio)'}"
 if echo "$FINAL_GOPRIVATE" | grep -q "github.com/BrBit-Sistemas"; then
-    echo "    → github.com/BrBit-Sistemas mantido (outros repositórios são privados) ✓"
+    echo "    → github.com/BrBit-Sistemas configurado (outros repositórios são privados) ✓"
+else
+    echo "    ⚠️  ATENÇÃO: github.com/BrBit-Sistemas não está no GOPRIVATE!"
 fi
 echo "  GONOPROXY:  ${FINAL_GONOPROXY:-'(vazio)'}"
 if echo "$FINAL_GONOPROXY" | grep -q "sagep-auth-cli"; then
-    echo "    → sagep-auth-cli configurado para acesso público ✓"
+    echo "    → sagep-auth-cli com exceção para acesso público ✓"
+else
+    echo "    ⚠️  ATENÇÃO: sagep-auth-cli não está no GONOPROXY!"
 fi
 echo "  GONOSUMDB:  ${FINAL_GONOSUMDB:-'(vazio)'}"
 if echo "$FINAL_GONOSUMDB" | grep -q "sagep-auth-cli"; then
-    echo "    → sagep-auth-cli configurado para checksum público ✓"
+    echo "    → sagep-auth-cli com exceção para checksum público ✓"
+else
+    echo "    ⚠️  ATENÇÃO: sagep-auth-cli não está no GONOSUMDB!"
 fi
 echo ""
 echo "✓ Ambiente Go configurado!"
-echo "  → sagep-auth-cli: acesso público permitido"
-echo "  → Outros repositórios BrBit-Sistemas: permanecem privados"
+echo "  → sagep-auth-cli: acesso público via exceção (GONOPROXY/GONOSUMDB)"
+echo "  → Outros repositórios BrBit-Sistemas: protegidos via GOPRIVATE"
 

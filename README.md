@@ -56,19 +56,33 @@ Para garantir que o Go possa acessar o `sagep-auth-cli` publicamente sem expor o
 make setup-go-env
 ```
 
-O script `scripts/setup-go-env.sh` usa uma estratégia inteligente:
-- **Mantém** `github.com/BrBit-Sistemas` no `GOPRIVATE` (para proteger outros repositórios privados)
-- **Adiciona** `github.com/BrBit-Sistemas/sagep-auth-cli` ao `GONOPROXY` e `GONOSUMDB` (permite acesso público apenas a este repositório)
+O script `scripts/setup-go-env.sh` implementa a estratégia correta:
+
+1. **Garante que `github.com/BrBit-Sistemas` está no `GOPRIVATE`**
+   - Protege todos os outros repositórios privados da organização
+   - Se não estiver, o script adiciona automaticamente
+
+2. **Adiciona exceção via `GONOPROXY` e `GONOSUMDB`**
+   - Adiciona `github.com/BrBit-Sistemas/sagep-auth-cli` às exceções
+   - Permite acesso público apenas a este repositório específico
+   - Mantém os outros repositórios protegidos pelo `GOPRIVATE`
 
 **Opção 2: Configurar manualmente**
 
 ```bash
-# Adicionar apenas o repositório público às exceções
+# 1. Garantir que GOPRIVATE contém github.com/BrBit-Sistemas (protege outros repositórios)
+go env -w GOPRIVATE="github.com/BrBit-Sistemas"
+
+# 2. Adicionar exceção para o repositório público
 go env -w GONOPROXY="github.com/BrBit-Sistemas/sagep-auth-cli"
 go env -w GONOSUMDB="github.com/BrBit-Sistemas/sagep-auth-cli"
+```
 
-# Manter GOPRIVATE com github.com/BrBit-Sistemas para proteger outros repositórios
-# (não remover se já estiver configurado)
+**Importante:** Se você já tiver outros módulos privados no `GOPRIVATE`, adicione `github.com/BrBit-Sistemas` à lista existente:
+
+```bash
+# Exemplo: se você já tem outros módulos privados
+go env -w GOPRIVATE="github.com/empresa1,github.com/BrBit-Sistemas,github.com/empresa2"
 ```
 
 **Importante:** `GOPRIVATE`, `GONOPROXY` e `GONOSUMDB` são configurações do ambiente Go, não do CLI. Elas afetam apenas a instalação via `go install`, não o funcionamento do CLI em si.
