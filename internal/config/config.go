@@ -3,7 +3,10 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"github.com/joho/godotenv"
 )
 
 // Config contém as configurações do CLI
@@ -12,29 +15,82 @@ type Config struct {
 	AuthToken string
 }
 
-// LoadConfig carrega a configuração a partir de flags e variáveis de ambiente
-// Ordem de precedência: flags > env vars > defaults
+// LoadConfig carrega a configuração a partir de flags, arquivo .env e variáveis de ambiente
+// Ordem de precedência: flags > .env > env vars do sistema
+// As variáveis SAGEP_AUTH_URL e SAGEP_AUTH_TOKEN são obrigatórias
 func LoadConfig(authURLFlag, authTokenFlag string) (*Config, error) {
-	cfg := &Config{}
-
-	// URL do auth: flag > env > default
-	if authURLFlag != "" {
-		cfg.AuthURL = strings.TrimSuffix(authURLFlag, "/")
-	} else if envURL := os.Getenv("SAGEP_AUTH_URL"); envURL != "" {
-		cfg.AuthURL = strings.TrimSuffix(envURL, "/")
-	} else {
-		return nil, fmt.Errorf("URL do auth não configurada. Use --url ou SAGEP_AUTH_URL")
+	// Tentar carregar arquivo .env (se existir)
+	// Primeiro tenta no diretório atual, depois procura a raiz do projeto
+	envPath := ".env"
+	if _, err := os.Stat(envPath); err != nil {
+		// Se não encontrou no diretório atual, procura na raiz do projeto
+		projectRoot, err := FindProjectRoot()
+		if err == nil {
+			rootEnvPath := filepath.Join(projectRoot, ".env")
+			if _, err := os.Stat(rootEnvPath); err == nil {
+				envPath = rootEnvPath
+			}
+		}
 	}
 
-	// Token: flag > env
+	// Carregar .env se existir
+	if _, err := os.Stat(envPath); err == nil {
+		if err := godotenv.Load(envPath); err != nil {
+			return nil, fmt.Errorf("erro ao carregar arquivo .env: %w", err)
+		}
+	}
+
+	cfg := &Config{}
+
+	// URL do auth: flag > .env > env vars do sistema
+	if authURLFlag != "" {
+		cfg.AuthURL = strings.TrimSuffix(authURLFlag, "/")
+	} else {
+		envURL := os.Getenv("SAGEP_AUTH_URL")
+		if envURL == "" {
+			return nil, fmt.Errorf("SAGEP_AUTH_URL é obrigatória. Configure via --url, arquivo .env ou variável de ambiente")
+		}
+		cfg.AuthURL = strings.TrimSuffix(envURL, "/")
+	}
+
+	// Token: flag > .env > env vars do sistema
 	if authTokenFlag != "" {
 		cfg.AuthToken = authTokenFlag
-	} else if envToken := os.Getenv("SAGEP_AUTH_TOKEN"); envToken != "" {
-		cfg.AuthToken = envToken
 	} else {
-		return nil, fmt.Errorf("token de autenticação não configurado. Use --token ou SAGEP_AUTH_TOKEN")
+		envToken := os.Getenv("SAGEP_AUTH_TOKEN")
+		if envToken == "" {
+			return nil, fmt.Errorf("SAGEP_AUTH_TOKEN é obrigatória. Configure via --token, arquivo .env ou variável de ambiente")
+		}
+		cfg.AuthToken = envToken
 	}
 
 	return cfg, nil
+}
+
+// FindProjectRoot procura a raiz do projeto procurando por .env ou go.mod
+func FindProjectRoot() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	for {
+		// Verifica se existe .env ou go.mod neste diretório
+		if _, err := os.Stat(filepath.Join(dir, ".env")); err == nil {
+			return dir, nil
+		}
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir, nil
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			// Chegou na raiz do sistema de arquivos
+			break
+		}
+		dir = parent
+	}
+
+	return "", fmt.Errorf("raiz do projeto não encontrada")
 }
 

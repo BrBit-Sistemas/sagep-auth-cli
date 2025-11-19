@@ -17,6 +17,10 @@ O `sagep-auth-cli` permite que qualquer aplicação SAGEP (ex: `sagep-biopass`, 
 **Opção 1: Usando Makefile (recomendado)**
 
 ```bash
+# Primeiro, configure o ambiente Go (garante que repositório público não precise autenticação)
+make setup-go-env
+
+# Depois, compile o CLI
 make build
 ```
 
@@ -41,38 +45,71 @@ O binário será instalado em `$GOPATH/bin/sagep-auth-cli`. Certifique-se de que
 go install github.com/BrBit-Sistemas/sagep-auth-cli/cmd/sagep-auth-cli@latest
 ```
 
-**Nota sobre autenticação:** Se você tiver `GOPRIVATE` configurado para `github.com/brbit` ou `github.com/BrBit-Sistemas`, o Go tentará autenticar mesmo que o repositório seja público. Para remover essa configuração:
+**Configuração do ambiente Go (GOPRIVATE):**
+
+⚠️ **Importante:** Apenas `github.com/BrBit-Sistemas/sagep-auth-cli` é **público**. Todos os outros repositórios em `github.com/BrBit-Sistemas` são **privados**.
+
+Para garantir que o Go possa acessar o `sagep-auth-cli` publicamente sem expor os outros repositórios privados, execute:
 
 ```bash
-# Verificar configuração atual
-go env GOPRIVATE
-
-# Remover github.com/brbit ou github.com/BrBit-Sistemas do GOPRIVATE
-go env -w GOPRIVATE=""
+# Opção 1: Usar o script automático (recomendado)
+make setup-go-env
 ```
 
-Ou, se você quiser manter outros módulos privados, remova apenas o específico:
+O script `scripts/setup-go-env.sh` usa uma estratégia inteligente:
+- **Mantém** `github.com/BrBit-Sistemas` no `GOPRIVATE` (para proteger outros repositórios privados)
+- **Adiciona** `github.com/BrBit-Sistemas/sagep-auth-cli` ao `GONOPROXY` e `GONOSUMDB` (permite acesso público apenas a este repositório)
+
+**Opção 2: Configurar manualmente**
 
 ```bash
-# Exemplo: se GOPRIVATE="github.com/empresa1,github.com/brbit,github.com/empresa2"
-# Remover apenas github.com/brbit
-go env -w GOPRIVATE="github.com/empresa1,github.com/empresa2"
+# Adicionar apenas o repositório público às exceções
+go env -w GONOPROXY="github.com/BrBit-Sistemas/sagep-auth-cli"
+go env -w GONOSUMDB="github.com/BrBit-Sistemas/sagep-auth-cli"
+
+# Manter GOPRIVATE com github.com/BrBit-Sistemas para proteger outros repositórios
+# (não remover se já estiver configurado)
 ```
+
+**Importante:** `GOPRIVATE`, `GONOPROXY` e `GONOSUMDB` são configurações do ambiente Go, não do CLI. Elas afetam apenas a instalação via `go install`, não o funcionamento do CLI em si.
 
 ## Configuração
 
-### Variáveis de Ambiente
+### Arquivo .env (Recomendado)
 
-O CLI suporta as seguintes variáveis de ambiente:
+O CLI suporta um arquivo `.env` na raiz do projeto para configurar as variáveis de ambiente. Isso é útil para desenvolvimento local e evita expor credenciais na linha de comando.
+
+**Primeiro passo:** Copie o arquivo de exemplo:
+
+```bash
+cp .env.example .env
+```
+
+**Segundo passo:** Edite o arquivo `.env` e preencha com seus valores:
+
+```env
+SAGEP_AUTH_URL=https://auth.sagep.com.br
+SAGEP_AUTH_TOKEN=seu-token-aqui
+```
+
+**Importante:** O arquivo `.env` está no `.gitignore` e não será commitado no repositório.
+
+### Variáveis de Ambiente Obrigatórias
+
+As seguintes variáveis são **obrigatórias** e devem ser configuradas:
 
 - `SAGEP_AUTH_URL`: URL base do serviço sagep-auth (ex: `https://auth.sagep.com.br`)
 - `SAGEP_AUTH_TOKEN`: Token ou API key para autenticação na API do auth
 
+**Nota sobre `GOPRIVATE`:** Esta variável de ambiente do Go **não é necessária** para o funcionamento do CLI. Ela é uma configuração do ambiente Go que afeta como o Go baixa módulos. Se você tiver problemas ao instalar o CLI via `go install`, verifique se `GOPRIVATE` não está configurado para `github.com/BrBit-Sistemas` (veja seção de instalação acima).
+
 ### Ordem de Precedência
 
-1. Flags de linha de comando (maior precedência)
-2. Variáveis de ambiente
-3. Valores default (quando aplicável)
+1. **Flags de linha de comando** (maior precedência) - `--url` e `--token`
+2. **Arquivo `.env`** - na raiz do projeto
+3. **Variáveis de ambiente do sistema** - `SAGEP_AUTH_URL` e `SAGEP_AUTH_TOKEN`
+
+**Nota:** Se nenhuma das opções acima fornecer as variáveis obrigatórias, o CLI retornará um erro.
 
 ## Uso
 

@@ -1,5 +1,5 @@
 # Binaries
-sagep-auth-cli
+/sagep-auth-cli
 *.exe
 *.exe~
 *.dll
@@ -31,4 +31,7 @@ Thumbs.db
 
 # Manifest de exemplo (não commitar o real)
 auth-manifest.yaml
+
+# Arquivo de ambiente (não commitar)
+.env
 

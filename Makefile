@@ -1,4 +1,4 @@
-.PHONY: build install test clean help
+.PHONY: build install test clean help setup-go-env
 
 # Nome do binário
 BINARY_NAME=sagep-auth-cli
@@ -7,6 +7,9 @@ CMD_PATH=./cmd/sagep-auth-cli
 help: ## Exibe esta mensagem de ajuda
 	@echo "Comandos disponíveis:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+
+setup-go-env: ## Configura o ambiente Go para repositórios públicos (remove GOPRIVATE para este repo)
+	@./scripts/setup-go-env.sh
 
 build: ## Compila o CLI
 	@echo "Compilando $(BINARY_NAME)..."
