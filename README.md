@@ -35,7 +35,29 @@ go install ./cmd/sagep-auth-cli
 
 O binário será instalado em `$GOPATH/bin/sagep-auth-cli`. Certifique-se de que `$GOPATH/bin` está no seu `PATH` para usar o comando diretamente, ou use o caminho completo.
 
-**Nota:** O comando `go install github.com/brbit/sagep-auth-cli/cmd/sagep-auth-cli@latest` só funcionará após o módulo ser publicado em um repositório Git público. Para uso local, use uma das opções acima.
+**Opção 4: Instalar diretamente do GitHub**
+
+```bash
+go install github.com/BrBit-Sistemas/sagep-auth-cli/cmd/sagep-auth-cli@latest
+```
+
+**Nota sobre autenticação:** Se você tiver `GOPRIVATE` configurado para `github.com/brbit` ou `github.com/BrBit-Sistemas`, o Go tentará autenticar mesmo que o repositório seja público. Para remover essa configuração:
+
+```bash
+# Verificar configuração atual
+go env GOPRIVATE
+
+# Remover github.com/brbit ou github.com/BrBit-Sistemas do GOPRIVATE
+go env -w GOPRIVATE=""
+```
+
+Ou, se você quiser manter outros módulos privados, remova apenas o específico:
+
+```bash
+# Exemplo: se GOPRIVATE="github.com/empresa1,github.com/brbit,github.com/empresa2"
+# Remover apenas github.com/brbit
+go env -w GOPRIVATE="github.com/empresa1,github.com/empresa2"
+```
 
 ## Configuração
 

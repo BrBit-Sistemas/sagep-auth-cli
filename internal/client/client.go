@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/brbit/sagep-auth-cli/internal/manifest"
+	"github.com/BrBit-Sistemas/sagep-auth-cli/internal/manifest"
 )
 
 // AuthClient é o cliente HTTP para comunicação com o sagep-auth

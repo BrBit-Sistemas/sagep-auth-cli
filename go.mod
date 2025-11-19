@@ -1,4 +1,4 @@
-module github.com/brbit/sagep-auth-cli
+module github.com/BrBit-Sistemas/sagep-auth-cli
 
 go 1.21
 

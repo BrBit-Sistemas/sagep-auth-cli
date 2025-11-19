@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/brbit/sagep-auth-cli/internal/client"
-	"github.com/brbit/sagep-auth-cli/internal/config"
-	"github.com/brbit/sagep-auth-cli/internal/manifest"
+	"github.com/BrBit-Sistemas/sagep-auth-cli/internal/client"
+	"github.com/BrBit-Sistemas/sagep-auth-cli/internal/config"
+	"github.com/BrBit-Sistemas/sagep-auth-cli/internal/manifest"
 )
 
 // RunSync executa o comando de sincronização
