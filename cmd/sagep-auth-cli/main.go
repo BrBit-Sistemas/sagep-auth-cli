@@ -24,7 +24,7 @@ func main() {
 	)
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Uso: %s sync [opções]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Uso: %s [opções] sync\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Comandos:\n")
 		fmt.Fprintf(os.Stderr, "  sync    Sincroniza o manifest com o serviço sagep-auth\n\n")
 		fmt.Fprintf(os.Stderr, "Opções:\n")
@@ -32,8 +32,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\nVariáveis de ambiente:\n")
 		fmt.Fprintf(os.Stderr, "  SAGEP_AUTH_URL     URL base do serviço sagep-auth\n")
 		fmt.Fprintf(os.Stderr, "  SAGEP_AUTH_TOKEN   Token de autenticação\n\n")
-		fmt.Fprintf(os.Stderr, "Exemplo:\n")
-		fmt.Fprintf(os.Stderr, "  %s sync --manifest ./auth-manifest.yaml\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Exemplos:\n")
+		fmt.Fprintf(os.Stderr, "  %s --manifest ./auth-manifest.yaml sync\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -m ./auth-manifest.yaml sync\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s sync  # usa ./auth-manifest.yaml (padrão)\n", os.Args[0])
 	}
 
 	flag.Parse()
@@ -54,8 +56,16 @@ func main() {
 
 	command := args[0]
 
-	// Usar -m se fornecido, senão usar --manifest
-	manifest := *manifestPath
+	// Determinar qual manifest usar: -m tem precedência sobre --manifest
+	// Se nenhum for fornecido, usa o default
+	manifest := defaultManifestPath
+	
+	// Verificar se --manifest foi usado (diferente do default)
+	if *manifestPath != defaultManifestPath {
+		manifest = *manifestPath
+	}
+	
+	// Verificar se -m foi usado (tem precedência sobre --manifest)
 	if *manifestPathShort != defaultManifestPath {
 		manifest = *manifestPathShort
 	}

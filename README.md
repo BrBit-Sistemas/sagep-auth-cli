@@ -142,17 +142,38 @@ sagep-auth-cli sync --manifest ./auth-manifest.yaml
 - `--token`: Override do token de autenticação (opcional)
 - `--help`: Exibir ajuda
 
-**Exemplo:**
+**Exemplos:**
+
+⚠️ **Importante:** Os flags devem vir **antes** do comando `sync`:
 
 ```bash
-# Usando variáveis de ambiente
+# Opção 1: Usando arquivo .env (recomendado)
+# Certifique-se de ter o arquivo .env configurado na raiz do projeto
+sagep-auth-cli --manifest ./auth-manifest.yaml sync
+
+# Opção 2: Usando variáveis de ambiente do sistema
 export SAGEP_AUTH_URL=https://auth.sagep.com.br
 export SAGEP_AUTH_TOKEN=seu-token-aqui
-sagep-auth-cli sync
+sagep-auth-cli --manifest ./auth-manifest.yaml sync
 
-# Usando flags
-sagep-auth-cli sync --manifest ./auth-manifest.yaml --url https://auth.sagep.com.br --token seu-token
+# Opção 3: Usando flags (override completo)
+sagep-auth-cli \
+  --manifest ./auth-manifest.yaml \
+  --url https://auth.sagep.com.br \
+  --token seu-token-aqui \
+  sync
+
+# Opção 4: Usando flag curta para manifest
+sagep-auth-cli -m ./auth-manifest.yaml sync
+
+# Opção 5: Usando manifest padrão (./auth-manifest.yaml)
+# Se o arquivo se chamar exatamente auth-manifest.yaml na raiz
+sagep-auth-cli sync
 ```
+
+**Nota:** A ordem `sagep-auth-cli sync --manifest` também funciona, mas a ordem recomendada é `sagep-auth-cli --manifest sync` (flags antes do comando).
+
+**Ordem de precedência:** Flags > `.env` > Variáveis de ambiente do sistema
 
 ## Formato do Manifest
 
