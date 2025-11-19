@@ -29,11 +29,21 @@ type Role struct {
 	Permissions []string `yaml:"permissions" json:"permissions"`
 }
 
+// User representa um usuário no manifest
+type User struct {
+	Email    string   `yaml:"email" json:"email"`
+	Password string   `yaml:"password" json:"password"`
+	Name     string   `yaml:"name" json:"name"`
+	Active   bool     `yaml:"active,omitempty" json:"active,omitempty"`
+	Roles    []string `yaml:"roles" json:"roles"`
+}
+
 // AuthManifest representa o manifest completo
 type AuthManifest struct {
 	Application Application  `yaml:"application" json:"application"`
 	Permissions []Permission  `yaml:"permissions" json:"permissions"`
 	Roles       []Role        `yaml:"roles" json:"roles"`
+	Users       []User        `yaml:"users,omitempty" json:"users,omitempty"`
 }
 
 // LoadManifest lê e valida um arquivo de manifest YAML

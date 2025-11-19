@@ -25,8 +25,9 @@ func main() {
 	)
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Uso: %s [opções] sync\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Uso: %s [opções] <comando>\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Comandos:\n")
+		fmt.Fprintf(os.Stderr, "  init    Cria um novo manifest interativamente\n")
 		fmt.Fprintf(os.Stderr, "  sync    Sincroniza o manifest com o serviço sagep-auth\n\n")
 		fmt.Fprintf(os.Stderr, "Opções:\n")
 		flag.PrintDefaults()
@@ -36,6 +37,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  SAGEP_AUTH_TOKEN   Token JWT (uso normal, opcional se tiver SECRET)\n")
 		fmt.Fprintf(os.Stderr, "\n  Você precisa configurar pelo menos um: SAGEP_AUTH_SECRET ou SAGEP_AUTH_TOKEN\n\n")
 		fmt.Fprintf(os.Stderr, "Exemplos:\n")
+		fmt.Fprintf(os.Stderr, "  %s init  # Cria manifest interativamente\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s --manifest ./auth-manifest.yaml sync\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -m ./auth-manifest.yaml sync\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s sync  # usa ./auth-manifest.yaml (padrão)\n", os.Args[0])
@@ -88,6 +90,21 @@ func main() {
 	}
 
 	switch command {
+	case "init":
+		// Determinar caminho do manifest para criar
+		initManifestPath := defaultManifestPath
+		if *manifestPath != defaultManifestPath {
+			initManifestPath = *manifestPath
+		}
+		if *manifestPathShort != defaultManifestPath {
+			initManifestPath = *manifestPathShort
+		}
+
+		if err := commands.RunInit(initManifestPath); err != nil {
+			fmt.Fprintf(os.Stderr, "Erro: %v\n", err)
+			os.Exit(1)
+		}
+
 	case "sync":
 		// Carregar configuração
 		cfg, err := config.LoadConfig(*authURL, *authToken, *authSecret)
@@ -101,7 +118,7 @@ func main() {
 
 	default:
 		fmt.Fprintf(os.Stderr, "Erro: comando desconhecido '%s'\n\n", command)
-		fmt.Fprintf(os.Stderr, "Comandos disponíveis: sync\n")
+		fmt.Fprintf(os.Stderr, "Comandos disponíveis: init, sync\n")
 		os.Exit(1)
 	}
 }

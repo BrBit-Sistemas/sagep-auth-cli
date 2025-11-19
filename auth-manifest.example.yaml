@@ -1,56 +1,224 @@
-# Exemplo de manifest para sincronização com sagep-auth
-# Copie este arquivo para auth-manifest.yaml e ajuste conforme necessário
+# ============================================================================
+# Manifest de Autenticação e Autorização - SAGEP BioPass
+# ============================================================================
+# Este arquivo descreve a aplicação, suas permissões e roles base para o
+# sistema de autenticação centralizado (sagep-auth).
+#
+# Estrutura:
+# - application: Define a aplicação no sistema
+# - permissions: Lista todas as permissões disponíveis
+# - roles: Define roles base do sistema (system: true)
+# ============================================================================
 
 application:
   code: sagep-biopass
   name: SAGEP Biopass
   description: Sistema de controle de ponto biométrico
 
+# ============================================================================
+# Permissões
+# ============================================================================
+# Cada permissão representa uma ação ou acesso a um recurso.
+# Formato: biopass.{recurso}.{ação}
+# ============================================================================
+
 permissions:
+  # Dashboard
+  - code: biopass.dashboard.view
+    description: Visualizar o dashboard principal
+
+  # Dispositivos (CRUD completo)
   - code: biopass.devices.read
     description: Listar e visualizar dispositivos
   - code: biopass.devices.create
-    description: Criar dispositivos
+    description: Criar novos dispositivos
   - code: biopass.devices.update
-    description: Atualizar dispositivos
+    description: Editar dispositivos existentes
   - code: biopass.devices.delete
-    description: Excluir dispositivos
+    description: Remover ou inativar dispositivos
+
+  # Participantes (CRUD completo)
+  - code: biopass.participants.read
+    description: Listar e visualizar participantes
+  - code: biopass.participants.create
+    description: Criar novos participantes
+  - code: biopass.participants.update
+    description: Editar participantes existentes
+  - code: biopass.participants.delete
+    description: Remover ou inativar participantes
+
+  # Registros de Ponto
+  - code: biopass.attendance.read
+    description: Visualizar registros de ponto/atendimento
+  - code: biopass.attendance.create
+    description: Criar registros de ponto manualmente
+  - code: biopass.attendance.update
+    description: Editar registros de ponto
+  - code: biopass.attendance.delete
+    description: Remover registros de ponto
+
+  # Relatórios
+  - code: biopass.reports.read
+    description: Visualizar relatórios e análises
+
+  # Usuários (administração dentro do contexto biopass)
+  - code: biopass.users.read
+    description: Listar e visualizar usuários do sistema
+  - code: biopass.users.manage
+    description: Criar, editar e gerenciar usuários e suas roles dentro da aplicação
+
+  # Configurações
+  - code: biopass.settings.view
+    description: Acessar configurações da aplicação
+  - code: biopass.settings.manage
+    description: Gerenciar configurações da aplicação
+
+# ============================================================================
+# Permissões de Menu (CASL)
+# ============================================================================
+# Permissões específicas para controle de visibilidade de menus
+# Formato: Menu:{NomeDoMenu}
+# ============================================================================
+
+  # Menus - Visibilidade
+  - code: Menu:Dashboard
+    description: Exibir menu Dashboard
+  - code: Menu:Devices
+    description: Exibir menu Dispositivos
+  - code: Menu:Participants
+    description: Exibir menu Participantes
+  - code: Menu:Attendance
+    description: Exibir menu Registros de Ponto
+  - code: Menu:Reports
+    description: Exibir menu Relatórios
+  - code: Menu:Users
+    description: Exibir menu Usuários
+  - code: Menu:Settings
+    description: Exibir menu Configurações
+
+# ============================================================================
+# Roles Base do Sistema
+# ============================================================================
+# Roles com system: true são criadas automaticamente pelo sagep-auth
+# e não podem ser deletadas ou modificadas diretamente.
+# ============================================================================
 
 roles:
+  # Role Master - Acesso Total
   - code: master
     name: Master
     system: true
-    description: Acesso total ao sistema (bypass de permissões)
-    permissions:
-      - biopass.*  # Wildcard: todas as permissões que começam com biopass.
-
-  - code: biopass.admin
-    name: Administrador BioPass
-    system: true
-    description: Acesso total ao sistema Biopass
+    description: Acesso total ao sistema
     permissions:
       - biopass.*
 
-  - code: BIOPASS_DEVICES_READONLY
-    name: Consulta de Dispositivos Biopass
+  # Role de Administrador Completo
+  - code: biopass.admin
+    name: Administrador BioPass
     system: true
-    description: Apenas leitura de dispositivos
+    description: Acesso completo a todas as funcionalidades do BioPass
     permissions:
+      # Dashboard
+      - biopass.dashboard.view
+      # Dispositivos
       - biopass.devices.read
+      - biopass.devices.create
+      - biopass.devices.update
+      - biopass.devices.delete
+      # Participantes
+      - biopass.participants.read
+      - biopass.participants.create
+      - biopass.participants.update
+      - biopass.participants.delete
+      # Registros de Ponto
+      - biopass.attendance.read
+      - biopass.attendance.create
+      - biopass.attendance.update
+      - biopass.attendance.delete
+      # Relatórios
+      - biopass.reports.read
+      # Usuários
+      - biopass.users.read
+      - biopass.users.manage
+      # Configurações
+      - biopass.settings.view
+      - biopass.settings.manage
+      # Menus
+      - Menu:Dashboard
+      - Menu:Devices
+      - Menu:Participants
+      - Menu:Attendance
+      - Menu:Reports
+      - Menu:Users
+      - Menu:Settings
+
+  # Role de Usuário Operacional
+  - code: biopass.operator
+    name: Operador BioPass
+    system: true
+    description: Acesso para operações do dia a dia (visualizar e criar registros)
+    permissions:
+      # Dashboard
+      - biopass.dashboard.view
+      # Dispositivos (somente leitura)
+      - biopass.devices.read
+      # Participantes (somente leitura)
+      - biopass.participants.read
+      # Registros de Ponto (criar e visualizar)
+      - biopass.attendance.read
+      - biopass.attendance.create
+      # Relatórios (somente leitura)
+      - biopass.reports.read
+      # Menus
+      - Menu:Dashboard
+      - Menu:Devices
+      - Menu:Participants
+      - Menu:Attendance
+      - Menu:Reports
+
+  # Role de Visualizador/Relatórios
+  - code: biopass.viewer
+    name: Visualizador BioPass
+    system: true
+    description: Acesso somente leitura para visualização de dados e relatórios
+    permissions:
+      # Dashboard
+      - biopass.dashboard.view
+      # Dispositivos (somente leitura)
+      - biopass.devices.read
+      # Participantes (somente leitura)
+      - biopass.participants.read
+      # Registros de Ponto (somente leitura)
+      - biopass.attendance.read
+      # Relatórios
+      - biopass.reports.read
+      # Menus
+      - Menu:Dashboard
+      - Menu:Devices
+      - Menu:Participants
+      - Menu:Attendance
+      - Menu:Reports
+
+# ============================================================================
+# Usuários Pré-configurados
+# ============================================================================
+# Usuários que serão criados automaticamente ao processar o manifest.
+# As senhas são fornecidas em texto claro e serão hasheadas pelo servidor.
+# ============================================================================
 
 users:
-  # Usuário Master (acesso total)
+  # Usuário Master
   - email: master@sagep.com.br
     password: Master@123  # Senha em texto claro (será hasheada pelo servidor)
     name: Master Admin
     roles:
-      - master  # Role code (será resolvido pelo servidor)
-    active: true
+      - master  # Role code (não ID)
+    active: true  # Opcional, default: true
 
-  # Usuário comum (exemplo)
+  # Usuário Administrador de Exemplo
   - email: user@sagep.com.br
     password: User@123
     name: Usuário Exemplo
     roles:
-      - biopass.admin  # Role code definida no manifest acima
+      - biopass.admin  # Pode ter múltiplas roles
     active: true
