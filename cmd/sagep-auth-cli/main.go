@@ -57,6 +57,20 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Detectar se flags foram passados após o comando (ordem incorreta)
+	if len(args) > 1 {
+		nextArg := args[1]
+		if nextArg == "--manifest" || nextArg == "-m" || nextArg == "--url" || nextArg == "--token" || nextArg == "--secret" {
+			fmt.Fprintf(os.Stderr, "❌ Erro: Os flags devem vir ANTES do comando!\n\n")
+			fmt.Fprintf(os.Stderr, "❌ Forma incorreta: %s %s %s ...\n", os.Args[0], args[0], nextArg)
+			fmt.Fprintf(os.Stderr, "✅ Forma correta:   %s %s %s ...\n\n", os.Args[0], nextArg, args[0])
+			fmt.Fprintf(os.Stderr, "Exemplos:\n")
+			fmt.Fprintf(os.Stderr, "  %s --manifest ./auth-manifest.yaml sync\n", os.Args[0])
+			fmt.Fprintf(os.Stderr, "  %s -m ./auth-manifest.yaml sync\n", os.Args[0])
+			os.Exit(1)
+		}
+	}
+
 	command := args[0]
 
 	// Determinar qual manifest usar: -m tem precedência sobre --manifest

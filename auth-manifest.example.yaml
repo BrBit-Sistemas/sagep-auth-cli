@@ -17,12 +17,20 @@ permissions:
     description: Excluir dispositivos
 
 roles:
-  - code: BIOPASS_ADMIN
-    name: Administrador Biopass
+  - code: master
+    name: Master
+    system: true
+    description: Acesso total ao sistema (bypass de permissões)
+    permissions:
+      - biopass.*  # Wildcard: todas as permissões que começam com biopass.
+
+  - code: biopass.admin
+    name: Administrador BioPass
     system: true
     description: Acesso total ao sistema Biopass
     permissions:
       - biopass.*
+
   - code: BIOPASS_DEVICES_READONLY
     name: Consulta de Dispositivos Biopass
     system: true
@@ -30,3 +38,19 @@ roles:
     permissions:
       - biopass.devices.read
 
+users:
+  # Usuário Master (acesso total)
+  - email: master@sagep.com.br
+    password: Master@123  # Senha em texto claro (será hasheada pelo servidor)
+    name: Master Admin
+    roles:
+      - master  # Role code (será resolvido pelo servidor)
+    active: true
+
+  # Usuário comum (exemplo)
+  - email: user@sagep.com.br
+    password: User@123
+    name: Usuário Exemplo
+    roles:
+      - biopass.admin  # Role code definida no manifest acima
+    active: true
