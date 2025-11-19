@@ -55,6 +55,7 @@ type SyncResponse struct {
 	Application SyncResultDTO       `json:"application"`
 	Permissions []SyncResultDTO     `json:"permissions"`
 	Roles       []SyncRoleResultDTO `json:"roles"`
+	Users       []SyncResultDTO     `json:"users,omitempty"`
 }
 
 // calculateHMAC calcula a assinatura HMAC do body + timestamp

@@ -53,10 +53,23 @@ func RunSync(manifestPath string, cfg *config.Config) error {
 		}
 	}
 
+	usersCreated := 0
+	usersUpdated := 0
+	for _, user := range resp.Users {
+		if user.Action == "created" {
+			usersCreated++
+		} else if user.Action == "updated" {
+			usersUpdated++
+		}
+	}
+
 	// Exibir resumo
 	fmt.Printf("Application: %s (%s)\n", resp.Application.Code, resp.Application.Action)
 	fmt.Printf("Permissions: %d (%d criadas, %d atualizadas)\n", len(resp.Permissions), permsCreated, permsUpdated)
 	fmt.Printf("Roles:       %d (%d criadas, %d atualizadas)\n", len(resp.Roles), rolesCreated, rolesUpdated)
+	if len(resp.Users) > 0 {
+		fmt.Printf("Users:       %d (%d criados, %d atualizados)\n", len(resp.Users), usersCreated, usersUpdated)
+	}
 	fmt.Println("\nSync concluído com sucesso.")
 
 	return nil
