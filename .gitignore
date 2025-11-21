@@ -35,4 +35,3 @@ auth-manifest.yaml
 # Arquivo de ambiente (não commitar)
 .env
 .env.bak
-
