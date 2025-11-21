@@ -3,6 +3,7 @@ package manifest
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -15,9 +16,15 @@ type Application struct {
 }
 
 // Permission representa uma permissão no manifest
+// IMPORTANTE: Subject e Action são obrigatórios para compatibilidade com CASL.js
+// Wildcards funcionam nas roles (ex: biopass.*), mas cada permission no banco
+// precisa ter subject e action corretos para o CASL.js funcionar corretamente
 type Permission struct {
-	Code        string `yaml:"code" json:"code"`
+	Code        string `yaml:"code" json:"code"`                                 // Identificador único (ex: "biopass.devices.read")
+	Subject     string `yaml:"subject,omitempty" json:"subject,omitempty"`       // OBRIGATÓRIO: Recurso para CASL.js (ex: "Device", "User", "Menu:Dashboard")
+	Action      string `yaml:"action,omitempty" json:"action,omitempty"`        // OBRIGATÓRIO: Ação para CASL.js (ex: "read", "create", "update", "delete", "manage", "view")
 	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+	Conditions  string `yaml:"conditions,omitempty" json:"conditions,omitempty"` // JSON opcional com condições (ex: {"userId": "${user.id}"})
 }
 
 // Role representa uma role no manifest
@@ -26,7 +33,9 @@ type Role struct {
 	Name        string   `yaml:"name" json:"name"`
 	System      bool     `yaml:"system" json:"system"`
 	Description string   `yaml:"description,omitempty" json:"description,omitempty"`
-	Permissions []string `yaml:"permissions" json:"permissions"`
+	Permissions []string `yaml:"permissions" json:"permissions"` // Lista de codes de permissions ou wildcards (ex: ["biopass.*"])
+	// IMPORTANTE: Role "master" deve ter permissions: [] (vazio)
+	// O sistema detecta role master e retorna automaticamente {action: "manage", subject: "all"} para CASL.js
 }
 
 // User representa um usuário no manifest
@@ -81,6 +90,26 @@ func validateManifest(m *AuthManifest) error {
 		if perm.Code == "" {
 			return fmt.Errorf("permissions[%d].code não pode ser vazio", i)
 		}
+		// Subject e Action são obrigatórios para compatibilidade com CASL.js
+		// (exceto se o sistema conseguir inferir do code no backend)
+		if perm.Subject == "" {
+			return fmt.Errorf("permissions[%d].subject não pode ser vazio (necessário para CASL.js)", i)
+		}
+		if perm.Action == "" {
+			return fmt.Errorf("permissions[%d].action não pode ser vazio (necessário para CASL.js)", i)
+		}
+		// Validar que action é uma ação válida do CASL.js
+		validActions := []string{"read", "create", "update", "delete", "manage", "view"}
+		actionValid := false
+		for _, validAction := range validActions {
+			if perm.Action == validAction {
+				actionValid = true
+				break
+			}
+		}
+		if !actionValid {
+			return fmt.Errorf("permissions[%d].action deve ser uma das ações válidas do CASL.js: read, create, update, delete, manage, view (atual: %s)", i, perm.Action)
+		}
 	}
 
 	// Validar roles
@@ -91,8 +120,17 @@ func validateManifest(m *AuthManifest) error {
 		if role.Name == "" {
 			return fmt.Errorf("roles[%d].name não pode ser vazio", i)
 		}
-		if len(role.Permissions) == 0 {
-			return fmt.Errorf("roles[%d].permissions não pode estar vazio", i)
+		
+		// Master sempre deve ter permissions vazio
+		if strings.ToLower(role.Code) == "master" {
+			if len(role.Permissions) > 0 {
+				return fmt.Errorf("roles[%d] (master) deve ter permissions vazio - o sistema concede acesso total automaticamente", i)
+			}
+		} else {
+			// Outras roles devem ter pelo menos uma permission
+			if len(role.Permissions) == 0 {
+				return fmt.Errorf("roles[%d].permissions não pode estar vazio", i)
+			}
 		}
 	}
 

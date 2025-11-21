@@ -10,6 +10,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// inferSubjectAndAction é um wrapper para a função do pacote manifest
+func inferSubjectAndAction(code string) (string, string, bool) {
+	return manifest.InferSubjectAndAction(code)
+}
+
 type InitAnswers struct {
 	AppName        string
 	AppCode        string
@@ -35,7 +40,10 @@ type UserAnswer struct {
 
 type PermissionAnswer struct {
 	Code        string
+	Subject     string
+	Action      string
 	Description string
+	Conditions  string
 }
 
 type RoleAnswer struct {
@@ -172,34 +180,129 @@ func RunInit(manifestPath string) error {
 	}
 
 	if answers.CreatePermissions {
-		fmt.Println("\n💡 Dica: Formato sugerido para códigos de permissão: {app}.{recurso}.{ação}")
-		fmt.Println("   Exemplo: biopass.devices.read, biopass.devices.create")
-		fmt.Println("   Ou para menus: Menu:Dashboard, Menu:Devices\n")
+		fmt.Println("\n💡 Dica: Formato sugerido para códigos de permissão:")
+		fmt.Println("   - {app}.{recurso}.{ação}: biopass.devices.read")
+		fmt.Println("   - {recurso}.{ação}: Device.read")
+		fmt.Println("   - Menu:{Nome}: Menu:Dashboard")
+		fmt.Println("   O sistema tentará inferir Subject e Action automaticamente.\n")
 
 		for {
 			var perm PermissionAnswer
 
+			// 1. Solicitar code
 			if err := survey.Ask([]*survey.Question{
 				{
 					Name: "code",
 					Prompt: &survey.Input{
 						Message: "Código da permissão:",
-						Help:    "Ex: biopass.devices.read, Menu:Dashboard",
+						Help:    "Ex: biopass.devices.read, Device.read, Menu:Dashboard",
 					},
 					Validate: survey.Required,
-				},
-				{
-					Name: "description",
-					Prompt: &survey.Input{
-						Message: "Descrição:",
-					},
 				},
 			}, &perm); err != nil {
 				break
 			}
 
 			perm.Code = strings.TrimSpace(perm.Code)
+
+			// 2. Tentar inferir subject e action
+			subject, action, inferred := inferSubjectAndAction(perm.Code)
+			
+			if inferred {
+				perm.Subject = subject
+				perm.Action = action
+				fmt.Printf("\n   ✅ Inferência automática:\n")
+				fmt.Printf("      Subject: %s\n", subject)
+				fmt.Printf("      Action:  %s\n", action)
+				
+				// 3. Permitir editar se necessário
+				var confirm bool
+				if err := survey.AskOne(&survey.Confirm{
+					Message: "Confirmar subject e action inferidos?",
+					Default: true,
+				}, &confirm); err != nil {
+					break
+				}
+
+				if !confirm {
+					// Solicitar edição
+					if err := survey.Ask([]*survey.Question{
+						{
+							Name: "subject",
+							Prompt: &survey.Input{
+								Message: "Subject (recurso, ex: Device, User, Menu:Dashboard):",
+								Default: subject,
+							},
+							Validate: survey.Required,
+						},
+						{
+							Name: "action",
+							Prompt: &survey.Select{
+								Message: "Action (ação CASL.js):",
+								Options: []string{"read", "create", "update", "delete", "manage", "view"},
+								Default: action,
+							},
+						},
+					}, &perm); err != nil {
+						break
+					}
+				}
+			} else {
+				// 4. Se não conseguiu inferir, solicitar explicitamente
+				fmt.Println("\n   ⚠️  Não foi possível inferir automaticamente.")
+				if err := survey.Ask([]*survey.Question{
+					{
+						Name: "subject",
+						Prompt: &survey.Input{
+							Message: "Subject (recurso, ex: Device, User, Menu:Dashboard):",
+							Help:    "Nome do recurso para CASL.js",
+						},
+						Validate: survey.Required,
+					},
+					{
+						Name: "action",
+						Prompt: &survey.Select{
+							Message: "Action (ação CASL.js):",
+							Options: []string{"read", "create", "update", "delete", "manage", "view"},
+							Help:    "Ação que será permitida",
+						},
+					},
+				}, &perm); err != nil {
+					break
+				}
+			}
+
+			// 5. Garantir que subject e action estão preenchidos
+			perm.Subject = strings.TrimSpace(perm.Subject)
+			perm.Action = strings.TrimSpace(perm.Action)
+			
+			if perm.Subject == "" || perm.Action == "" {
+				fmt.Println("   ❌ Erro: Subject e Action são obrigatórios para compatibilidade com CASL.js")
+				fmt.Println("   Por favor, tente novamente ou edite o manifest manualmente.")
+				continue
+			}
+
+			// 6. Solicitar description e conditions
+			if err := survey.Ask([]*survey.Question{
+				{
+					Name: "description",
+					Prompt: &survey.Input{
+						Message: "Descrição:",
+					},
+				},
+				{
+					Name: "conditions",
+					Prompt: &survey.Input{
+						Message: "Conditions (JSON opcional, ex: {\"userId\": \"${user.id}\"}):",
+						Help:    "Deixe vazio se não precisar de condições",
+					},
+				},
+			}, &perm); err != nil {
+				break
+			}
+
 			perm.Description = strings.TrimSpace(perm.Description)
+			perm.Conditions = strings.TrimSpace(perm.Conditions)
 			answers.Permissions = append(answers.Permissions, perm)
 
 			var addMore bool
@@ -260,7 +363,20 @@ func RunInit(manifestPath string) error {
 				break
 			}
 
-			// Selecionar permissões
+			// Trim do código antes de verificar se é master
+			role.Code = strings.TrimSpace(role.Code)
+			isMasterRole := strings.ToLower(role.Code) == "master"
+
+		// Master não precisa de permissões - o sistema retorna {action: "manage", subject: "all"} automaticamente
+		// IMPORTANTE: Master sempre deve ter permissions: [] para garantir que o sistema retorne o acesso total
+		if isMasterRole {
+			role.Permissions = []string{}
+			fmt.Println("   ℹ️  Role 'master' não precisa de permissões")
+			fmt.Println("      O sistema retorna automaticamente: {action: \"manage\", subject: \"all\"}")
+			} else {
+			// Selecionar permissões para roles não-master
+			// IMPORTANTE: Wildcards funcionam (ex: biopass.*), mas cada permission no banco
+			// precisa ter subject e action corretos para compatibilidade com CASL.js
 			if len(answers.Permissions) > 0 {
 				permOptions := make([]string, len(answers.Permissions))
 				for i, p := range answers.Permissions {
@@ -271,14 +387,16 @@ func RunInit(manifestPath string) error {
 				if err := survey.AskOne(&survey.MultiSelect{
 					Message: "Selecione as permissões para esta role:",
 					Options: permOptions,
-					Help:    "Você pode usar wildcards no YAML manualmente depois (ex: biopass.*)",
+					Help:    "Você pode usar wildcards no YAML manualmente depois (ex: biopass.*)\n" +
+						"Nota: Wildcards funcionam, mas cada permission precisa ter subject/action corretos no banco",
 				}, &selectedPerms); err == nil {
 					role.Permissions = selectedPerms
 				}
 			} else {
 				if err := survey.AskOne(&survey.Input{
 					Message: "Permissões (separadas por vírgula ou wildcard como biopass.*):",
-					Help:    "Ex: biopass.* ou biopass.devices.read,biopass.devices.create",
+					Help:    "Ex: biopass.* ou biopass.devices.read,biopass.devices.create\n" +
+						"Nota: Wildcards funcionam, mas cada permission precisa ter subject/action corretos no banco",
 				}, &role.Permissions); err != nil {
 					role.Permissions = []string{}
 				} else {
@@ -291,8 +409,9 @@ func RunInit(manifestPath string) error {
 					}
 				}
 			}
+			}
 
-			role.Code = strings.TrimSpace(role.Code)
+			// Code já foi trimado acima
 			role.Name = strings.TrimSpace(role.Name)
 			role.Description = strings.TrimSpace(role.Description)
 			answers.Roles = append(answers.Roles, role)
@@ -304,6 +423,46 @@ func RunInit(manifestPath string) error {
 			}, &addMore); err != nil || !addMore {
 				break
 			}
+		}
+	}
+
+	// Verificar se algum usuário tem role "master" e garantir que a role master existe
+	hasMasterUser := false
+	for _, user := range answers.Users {
+		for _, role := range user.Roles {
+			if strings.ToLower(role) == "master" {
+				hasMasterUser = true
+				break
+			}
+		}
+		if hasMasterUser {
+			break
+		}
+	}
+
+	// Se há usuário master, garantir que a role master existe e tem permissions vazias
+	if hasMasterUser {
+		hasMasterRole := false
+		for i := range answers.Roles {
+			if strings.ToLower(answers.Roles[i].Code) == "master" {
+				hasMasterRole = true
+				// Garantir que permissions está vazio
+				answers.Roles[i].Permissions = []string{}
+				break
+			}
+		}
+		
+		// Se não existe role master, criar automaticamente
+		if !hasMasterRole {
+			fmt.Println("\n   ⚠️  Usuário Master detectado, mas role 'master' não foi criada.")
+			fmt.Println("   ✅ Criando role 'master' automaticamente com permissions vazias...")
+			answers.Roles = append(answers.Roles, RoleAnswer{
+				Code:        "master",
+				Name:        "Master",
+				System:      true,
+				Description: "Role Master - acesso total ao sistema",
+				Permissions: []string{},
+			})
 		}
 	}
 
@@ -329,17 +488,27 @@ func buildManifestFromAnswers(answers InitAnswers) *manifest.AuthManifest {
 	for i, p := range answers.Permissions {
 		m.Permissions[i] = manifest.Permission{
 			Code:        p.Code,
+			Subject:     p.Subject,
+			Action:      p.Action,
 			Description: p.Description,
+			Conditions:  p.Conditions,
 		}
 	}
 
 	for i, r := range answers.Roles {
+		// Master não precisa de permissões - garantir array vazio sempre
+		// IMPORTANTE: O sistema detecta role master e retorna {action: "manage", subject: "all"} automaticamente
+		permissions := r.Permissions
+		if strings.ToLower(r.Code) == "master" {
+			permissions = []string{}
+		}
+		
 		m.Roles[i] = manifest.Role{
 			Code:        r.Code,
 			Name:        r.Name,
 			System:      r.System,
 			Description: r.Description,
-			Permissions: r.Permissions,
+			Permissions: permissions,
 		}
 	}
 
