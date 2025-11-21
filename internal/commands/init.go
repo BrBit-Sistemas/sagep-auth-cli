@@ -60,21 +60,17 @@ func RunInit(manifestPath string) error {
 
 	var answers InitAnswers
 
-	// 1. Informações da Aplicação
+	// 1. Informações da Aplicação (UX melhorada: usuário informa nome básico, CLI infere)
+	var appInput struct {
+		AppName        string
+		AppDescription string
+	}
 	if err := survey.Ask([]*survey.Question{
-		{
-			Name: "appCode",
-			Prompt: &survey.Input{
-				Message: "Código da aplicação (slug, ex: sagep-biopass):",
-				Help:    "Será usado como identificador único. Ex: sagep-biopass, sagep-crv",
-			},
-			Validate: survey.Required,
-		},
 		{
 			Name: "appName",
 			Prompt: &survey.Input{
-				Message: "Nome da aplicação:",
-				Help:    "Nome amigável exibido no sistema. Ex: SAGEP Biopass",
+				Message: "Nome da aplicação (ex: Biopass, CRV, Core):",
+				Help:    "Informe apenas o nome básico. O CLI gerará o código automaticamente.",
 			},
 			Validate: survey.Required,
 		},
@@ -84,12 +80,55 @@ func RunInit(manifestPath string) error {
 				Message: "Descrição (opcional):",
 			},
 		},
-	}, &answers); err != nil {
+	}, &appInput); err != nil {
 		return err
 	}
-	answers.AppCode = strings.ToLower(strings.TrimSpace(answers.AppCode))
-	answers.AppName = strings.TrimSpace(answers.AppName)
-	answers.AppDescription = strings.TrimSpace(answers.AppDescription)
+	
+	// Inferir code e name a partir do input
+	appNameInput := strings.TrimSpace(appInput.AppName)
+	answers.AppName = manifest.InferApplicationName(appNameInput)
+	answers.AppCode = manifest.InferApplicationCode(appNameInput)
+	answers.AppDescription = strings.TrimSpace(appInput.AppDescription)
+	
+	// Mostrar o que foi inferido
+	fmt.Printf("\n   ✅ Informações inferidas:\n")
+	fmt.Printf("      Código: %s\n", answers.AppCode)
+	fmt.Printf("      Nome:   %s\n", answers.AppName)
+	
+	// Permitir editar se necessário
+	var confirmApp bool
+	if err := survey.AskOne(&survey.Confirm{
+		Message: "Confirmar informações da aplicação?",
+		Default: true,
+	}, &confirmApp); err != nil {
+		return err
+	}
+	
+	if !confirmApp {
+		// Permitir editar manualmente
+		if err := survey.Ask([]*survey.Question{
+			{
+				Name: "appCode",
+				Prompt: &survey.Input{
+					Message: "Código da aplicação:",
+					Default: answers.AppCode,
+				},
+				Validate: survey.Required,
+			},
+			{
+				Name: "appName",
+				Prompt: &survey.Input{
+					Message: "Nome da aplicação:",
+					Default: answers.AppName,
+				},
+				Validate: survey.Required,
+			},
+		}, &answers); err != nil {
+			return err
+		}
+		answers.AppCode = strings.ToLower(strings.TrimSpace(answers.AppCode))
+		answers.AppName = strings.TrimSpace(answers.AppName)
+	}
 
 	// 2. Usuários
 	if err := survey.AskOne(&survey.Confirm{
@@ -180,91 +219,136 @@ func RunInit(manifestPath string) error {
 	}
 
 	if answers.CreatePermissions {
-		fmt.Println("\n💡 Dica: Formato sugerido para códigos de permissão:")
-		fmt.Println("   - {app}.{recurso}.{ação}: biopass.devices.read")
-		fmt.Println("   - {recurso}.{ação}: Device.read")
-		fmt.Println("   - Menu:{Nome}: Menu:Dashboard")
-		fmt.Println("   O sistema tentará inferir Subject e Action automaticamente.\n")
+		fmt.Println("\n💡 Você pode criar permissões de Menu ou de Recurso (entidade).\n")
 
 		for {
 			var perm PermissionAnswer
-
-			// 1. Solicitar code
-			if err := survey.Ask([]*survey.Question{
-				{
-					Name: "code",
-					Prompt: &survey.Input{
-						Message: "Código da permissão:",
-						Help:    "Ex: biopass.devices.read, Device.read, Menu:Dashboard",
-					},
-					Validate: survey.Required,
-				},
-			}, &perm); err != nil {
+			
+			// 1. Perguntar tipo de permissão
+			var permType string
+			if err := survey.AskOne(&survey.Select{
+				Message: "Tipo de permissão:",
+				Options: []string{"Menu", "Recurso (entidade)"},
+				Help:    "Menu: controle de visibilidade | Recurso: operações em entidades",
+			}, &permType); err != nil {
 				break
 			}
-
-			perm.Code = strings.TrimSpace(perm.Code)
-
-			// 2. Tentar inferir subject e action
-			subject, action, inferred := inferSubjectAndAction(perm.Code)
 			
-			if inferred {
-				perm.Subject = subject
-				perm.Action = action
-				fmt.Printf("\n   ✅ Inferência automática:\n")
-				fmt.Printf("      Subject: %s\n", subject)
-				fmt.Printf("      Action:  %s\n", action)
-				
-				// 3. Permitir editar se necessário
-				var confirm bool
-				if err := survey.AskOne(&survey.Confirm{
-					Message: "Confirmar subject e action inferidos?",
-					Default: true,
-				}, &confirm); err != nil {
-					break
+			if permType == "Menu" {
+				// 2a. Permissão de Menu - UX simplificada
+				var menuInput struct {
+					MenuName string
 				}
-
-				if !confirm {
-					// Solicitar edição
-					if err := survey.Ask([]*survey.Question{
-						{
-							Name: "subject",
-							Prompt: &survey.Input{
-								Message: "Subject (recurso, ex: Device, User, Menu:Dashboard):",
-								Default: subject,
-							},
-							Validate: survey.Required,
-						},
-						{
-							Name: "action",
-							Prompt: &survey.Select{
-								Message: "Action (ação CASL.js):",
-								Options: []string{"read", "create", "update", "delete", "manage", "view"},
-								Default: action,
-							},
-						},
-					}, &perm); err != nil {
-						break
-					}
-				}
-			} else {
-				// 4. Se não conseguiu inferir, solicitar explicitamente
-				fmt.Println("\n   ⚠️  Não foi possível inferir automaticamente.")
 				if err := survey.Ask([]*survey.Question{
 					{
-						Name: "subject",
+						Name: "menuName",
 						Prompt: &survey.Input{
-							Message: "Subject (recurso, ex: Device, User, Menu:Dashboard):",
-							Help:    "Nome do recurso para CASL.js",
+							Message: "Nome do menu (ex: Dashboard, Participantes):",
+							Help:    "Informe apenas o nome. O CLI criará automaticamente Menu:{Nome}",
+						},
+						Validate: survey.Required,
+					},
+				}, &menuInput); err != nil {
+					break
+				}
+				
+				// Inferir automaticamente
+				code, subject, action := manifest.InferMenuPermission(menuInput.MenuName)
+				perm.Code = code
+				perm.Subject = subject
+				perm.Action = action
+				
+				fmt.Printf("\n   ✅ Permissão de menu criada:\n")
+				fmt.Printf("      Code:    %s\n", perm.Code)
+				fmt.Printf("      Subject: %s\n", perm.Subject)
+				fmt.Printf("      Action:  %s\n", perm.Action)
+				
+			} else {
+				// 2b. Permissão de Recurso - UX simplificada
+				var resourceInput struct {
+					Entidade string
+					Action   string
+				}
+				if err := survey.Ask([]*survey.Question{
+					{
+						Name: "entidade",
+						Prompt: &survey.Input{
+							Message: "Nome da entidade (ex: participantes, devices, users):",
+							Help:    "Use minúsculo, plural (como o frontend verifica no CASL.js)",
 						},
 						Validate: survey.Required,
 					},
 					{
 						Name: "action",
 						Prompt: &survey.Select{
-							Message: "Action (ação CASL.js):",
+							Message: "Operação permitida:",
 							Options: []string{"read", "create", "update", "delete", "manage", "view"},
-							Help:    "Ação que será permitida",
+							Help:    "Ação que será permitida nesta entidade",
+						},
+					},
+				}, &resourceInput); err != nil {
+					break
+				}
+				
+				// Inferir automaticamente usando appCode
+				code, subject, actionOut := manifest.InferResourcePermission(resourceInput.Entidade, resourceInput.Action, answers.AppCode)
+				perm.Code = code
+				perm.Subject = subject
+				perm.Action = actionOut
+				
+				fmt.Printf("\n   ✅ Permissão de recurso criada:\n")
+				fmt.Printf("      Code:    %s\n", perm.Code)
+				fmt.Printf("      Subject: %s\n", perm.Subject)
+				fmt.Printf("      Action:  %s\n", perm.Action)
+			}
+
+			// 3. Garantir que subject e action estão preenchidos (fallback de segurança)
+			if perm.Subject == "" || perm.Action == "" {
+				subject, action, inferred := inferSubjectAndAction(perm.Code)
+				if inferred {
+					perm.Subject = subject
+					perm.Action = action
+				} else {
+					fmt.Println("\n   ⚠️  Erro: Não foi possível inferir subject e action.")
+					fmt.Println("   Por favor, tente novamente.")
+					continue
+				}
+			}
+			
+			// 4. Permitir editar se necessário (opcional)
+			var confirm bool
+			if err := survey.AskOne(&survey.Confirm{
+				Message: "Confirmar permissão criada?",
+				Default: true,
+			}, &confirm); err != nil {
+				break
+			}
+			
+			if !confirm {
+				// Solicitar edição manual
+				if err := survey.Ask([]*survey.Question{
+					{
+						Name: "code",
+						Prompt: &survey.Input{
+							Message: "Code:",
+							Default: perm.Code,
+						},
+						Validate: survey.Required,
+					},
+					{
+						Name: "subject",
+						Prompt: &survey.Input{
+							Message: "Subject:",
+							Default: perm.Subject,
+						},
+						Validate: survey.Required,
+					},
+					{
+						Name: "action",
+						Prompt: &survey.Select{
+							Message: "Action:",
+							Options: []string{"read", "create", "update", "delete", "manage", "view"},
+							Default: perm.Action,
 						},
 					},
 				}, &perm); err != nil {
