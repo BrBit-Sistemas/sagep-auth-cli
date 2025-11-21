@@ -28,7 +28,8 @@ func InferMenuPermission(menuName string) (code, subject, action string) {
 
 // InferResourcePermission cria uma permission de recurso a partir de entidade e ação
 // Entrada: entidade="participantes", action="read", appCode="sagep-biopass"
-// Saída: code="biopass.participants.read", subject="participantes", action="read"
+// Saída: code="biopass.participants.read", subject="biopass.participants", action="read"
+// Subject inclui namespace da aplicação para evitar conflitos em sistemas multi-aplicação
 func InferResourcePermission(entidade, action, appCode string) (code, subject, actionOut string) {
 	entidade = strings.TrimSpace(strings.ToLower(entidade))
 	action = strings.TrimSpace(strings.ToLower(action))
@@ -56,8 +57,9 @@ func InferResourcePermission(entidade, action, appCode string) (code, subject, a
 	// Gerar code: {appShort}.{entidade}.{action}
 	code = appShort + "." + entidade + "." + action
 	
-	// Subject é a entidade no formato que o frontend espera (minúsculo, plural)
-	subject = entidade
+	// Subject inclui namespace da aplicação (ex: "biopass.participants")
+	// Alinhado com melhores práticas: AWS IAM, Google Cloud, Azure
+	subject = appShort + "." + entidade
 	
 	// Action é a ação
 	actionOut = action

@@ -15,6 +15,45 @@ func inferSubjectAndAction(code string) (string, string, bool) {
 	return manifest.InferSubjectAndAction(code)
 }
 
+// getActionOptions retorna as opções de ações formatadas com descrições
+// Baseado em melhores práticas: AWS IAM, Google Cloud, CASL.js
+func getActionOptions() []string {
+	return []string{
+		"read - Consultar registros (listar ou visualizar individual)",
+		"create - Criar novos registros",
+		"update - Atualizar registros existentes",
+		"delete - Remover registros",
+		"manage - Controle total (todas as operações: read, create, update, delete)",
+		"view - Visualizar interface/telas (usado principalmente para menus)",
+	}
+}
+
+// extractActionValue extrai apenas o valor da ação (sem descrição)
+// Ex: "read - Consultar..." → "read"
+func extractActionValue(selectedOption string) string {
+	parts := strings.SplitN(selectedOption, " - ", 2)
+	if len(parts) > 0 {
+		return strings.TrimSpace(parts[0])
+	}
+	return strings.TrimSpace(selectedOption)
+}
+
+// findActionOption encontra a opção formatada correspondente a uma ação
+// Ex: "read" → "read - Consultar registros..."
+func findActionOption(action string) string {
+	options := getActionOptions()
+	for _, opt := range options {
+		if extractActionValue(opt) == action {
+			return opt
+		}
+	}
+	// Fallback: retorna a primeira opção se não encontrar
+	if len(options) > 0 {
+		return options[0]
+	}
+	return action
+}
+
 type InitAnswers struct {
 	AppName        string
 	AppCode        string
@@ -282,16 +321,19 @@ func RunInit(manifestPath string) error {
 						Name: "action",
 						Prompt: &survey.Select{
 							Message: "Operação permitida:",
-							Options: []string{"read", "create", "update", "delete", "manage", "view"},
-							Help:    "Ação que será permitida nesta entidade",
+							Options: getActionOptions(),
+							Help:    "Ação que será permitida nesta entidade. Baseado em melhores práticas de autorização (CASL.js, AWS IAM, Google Cloud)",
 						},
 					},
 				}, &resourceInput); err != nil {
 					break
 				}
 				
+				// Extrair apenas o valor da ação (sem descrição)
+				actionValue := extractActionValue(resourceInput.Action)
+				
 				// Inferir automaticamente usando appCode
-				code, subject, actionOut := manifest.InferResourcePermission(resourceInput.Entidade, resourceInput.Action, answers.AppCode)
+				code, subject, actionOut := manifest.InferResourcePermission(resourceInput.Entidade, actionValue, answers.AppCode)
 				perm.Code = code
 				perm.Subject = subject
 				perm.Action = actionOut
@@ -347,8 +389,9 @@ func RunInit(manifestPath string) error {
 						Name: "action",
 						Prompt: &survey.Select{
 							Message: "Action:",
-							Options: []string{"read", "create", "update", "delete", "manage", "view"},
-							Default: perm.Action,
+							Options: getActionOptions(),
+							Default: findActionOption(perm.Action),
+							Help:    "Ação que será permitida nesta entidade. Baseado em melhores práticas de autorização (CASL.js, AWS IAM, Google Cloud)",
 						},
 					},
 				}, &perm); err != nil {
@@ -358,7 +401,8 @@ func RunInit(manifestPath string) error {
 
 			// 5. Garantir que subject e action estão preenchidos
 			perm.Subject = strings.TrimSpace(perm.Subject)
-			perm.Action = strings.TrimSpace(perm.Action)
+			// Extrair apenas o valor da ação se for uma opção formatada
+			perm.Action = extractActionValue(strings.TrimSpace(perm.Action))
 			
 			if perm.Subject == "" || perm.Action == "" {
 				fmt.Println("   ❌ Erro: Subject e Action são obrigatórios para compatibilidade com CASL.js")
