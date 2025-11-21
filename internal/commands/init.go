@@ -94,17 +94,120 @@ type RoleAnswer struct {
 }
 
 func RunInit(manifestPath string) error {
-	fmt.Println("\n🚀 Criando novo manifest para integração com sagep-auth")
-	fmt.Println("═══════════════════════════════════════════════════════\n")
+	// Verificar se manifest já existe
+	var existingManifest *manifest.AuthManifest
+	manifestExists := false
+	if _, err := os.Stat(manifestPath); err == nil {
+		manifestExists = true
+		loaded, err := manifest.LoadManifest(manifestPath)
+		if err != nil {
+			fmt.Printf("\n⚠️  Manifest existe mas não pôde ser carregado: %v\n", err)
+			var proceed bool
+			if err := survey.AskOne(&survey.Confirm{
+				Message: "Deseja sobrescrever o manifest existente?",
+				Default: false,
+			}, &proceed); err != nil || !proceed {
+				return fmt.Errorf("operação cancelada")
+			}
+		} else {
+			existingManifest = loaded
+		}
+	}
+
+	// Se manifest existe, perguntar o que fazer
+	if manifestExists && existingManifest != nil {
+		fmt.Printf("\n📄 Manifest encontrado: %s\n", manifestPath)
+		fmt.Printf("   - Aplicação: %s (%s)\n", existingManifest.Application.Name, existingManifest.Application.Code)
+		fmt.Printf("   - Permissões: %d\n", len(existingManifest.Permissions))
+		fmt.Printf("   - Roles: %d\n", len(existingManifest.Roles))
+		fmt.Printf("   - Usuários: %d\n\n", len(existingManifest.Users))
+		
+		var action string
+		if err := survey.AskOne(&survey.Select{
+			Message: "O que deseja fazer?",
+			Options: []string{
+				"adicionar - Adicionar novos recursos ao manifest existente",
+				"sobrescrever - Criar um novo manifest (perde dados existentes)",
+				"cancelar - Não fazer nada",
+			},
+			Default: "adicionar - Adicionar novos recursos ao manifest existente",
+		}, &action); err != nil {
+			return err
+		}
+
+		if strings.Contains(action, "cancelar") {
+			return fmt.Errorf("operação cancelada")
+		}
+
+		if strings.Contains(action, "sobrescrever") {
+			var confirm bool
+			if err := survey.AskOne(&survey.Confirm{
+				Message: "⚠️  ATENÇÃO: Isso vai apagar todos os recursos existentes. Continuar?",
+				Default: false,
+			}, &confirm); err != nil || !confirm {
+				return fmt.Errorf("operação cancelada")
+			}
+			existingManifest = nil // Resetar para criar do zero
+		}
+	}
 
 	var answers InitAnswers
-
-	// 1. Informações da Aplicação (UX melhorada: usuário informa nome básico, CLI infere)
-	var appInput struct {
-		AppName        string
-		AppDescription string
+	
+	// Se tem manifest existente e vamos adicionar, carregar dados atuais
+	if existingManifest != nil {
+		answers.AppCode = existingManifest.Application.Code
+		answers.AppName = existingManifest.Application.Name
+		answers.AppDescription = existingManifest.Application.Description
+		
+		// Converter permissions existentes
+		answers.Permissions = make([]PermissionAnswer, len(existingManifest.Permissions))
+		for i, p := range existingManifest.Permissions {
+			answers.Permissions[i] = PermissionAnswer{
+				Code:        p.Code,
+				Subject:     p.Subject,
+				Action:      p.Action,
+				Description: p.Description,
+				Conditions:  p.Conditions,
+			}
+		}
+		
+		// Converter roles existentes
+		answers.Roles = make([]RoleAnswer, len(existingManifest.Roles))
+		for i, r := range existingManifest.Roles {
+			answers.Roles[i] = RoleAnswer{
+				Code:        r.Code,
+				Name:        r.Name,
+				System:      r.System,
+				Description: r.Description,
+				Permissions: r.Permissions,
+			}
+		}
+		
+		// Converter users existentes
+		answers.Users = make([]UserAnswer, len(existingManifest.Users))
+		for i, u := range existingManifest.Users {
+			answers.Users[i] = UserAnswer{
+				Email:    u.Email,
+				Password: u.Password,
+				Name:     u.Name,
+				Roles:    u.Roles,
+			}
+		}
+		
+		fmt.Println("\n📝 Modo: Adicionar recursos ao manifest existente")
+		fmt.Println("═══════════════════════════════════════════════════════\n")
+	} else {
+		fmt.Println("\n🚀 Criando novo manifest para integração com sagep-auth")
+		fmt.Println("═══════════════════════════════════════════════════════\n")
 	}
-	if err := survey.Ask([]*survey.Question{
+
+	// 1. Informações da Aplicação (apenas se criando novo manifest)
+	if existingManifest == nil {
+		var appInput struct {
+			AppName        string
+			AppDescription string
+		}
+		if err := survey.Ask([]*survey.Question{
 		{
 			Name: "appName",
 			Prompt: &survey.Input{
@@ -166,6 +269,9 @@ func RunInit(manifestPath string) error {
 			return err
 		}
 		answers.AppCode = strings.ToLower(strings.TrimSpace(answers.AppCode))
+	} else {
+		fmt.Printf("✅ Usando aplicação existente: %s (%s)\n\n", answers.AppName, answers.AppCode)
+	}
 		answers.AppName = strings.TrimSpace(answers.AppName)
 	}
 
