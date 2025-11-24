@@ -43,6 +43,7 @@ type User struct {
 	Email    string   `yaml:"email" json:"email"`
 	Password string   `yaml:"password" json:"password"`
 	Name     string   `yaml:"name" json:"name"`
+	TenantID *string  `yaml:"tenant_id,omitempty" json:"tenant_id,omitempty"` // Opcional: unidade do usuário (especialmente para primeiro usuário/bootstrap)
 	Active   bool     `yaml:"active,omitempty" json:"active,omitempty"`
 	Roles    []string `yaml:"roles" json:"roles"`
 }

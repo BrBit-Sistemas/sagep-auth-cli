@@ -73,6 +73,7 @@ type UserAnswer struct {
 	Email    string
 	Password string
 	Name     string
+	TenantID string // Opcional: unidade do usuário (deixe vazio para usuário global)
 	IsMaster bool
 	Roles    []string
 }
@@ -186,10 +187,15 @@ func RunInit(manifestPath string) error {
 		// Converter users existentes
 		answers.Users = make([]UserAnswer, len(existingManifest.Users))
 		for i, u := range existingManifest.Users {
+			tenantID := ""
+			if u.TenantID != nil {
+				tenantID = *u.TenantID
+			}
 			answers.Users[i] = UserAnswer{
 				Email:    u.Email,
 				Password: u.Password,
 				Name:     u.Name,
+				TenantID: tenantID,
 				Roles:    u.Roles,
 			}
 		}
@@ -319,11 +325,21 @@ func RunInit(manifestPath string) error {
 					},
 					Validate: survey.Required,
 				},
+				{
+					Name: "tenantID",
+					Prompt: &survey.Input{
+						Message: "Unidade (tenant_id) do usuário:",
+						Help:    "Opcional - deixe vazio para usuário global. Especialmente útil para primeiro usuário/bootstrap (ex: unidade-005)",
+					},
+				},
 			}
 
 			if err := survey.Ask(userQuestions, &user); err != nil {
 				break
 			}
+
+			// Limpar tenant_id se vazio (para não incluir no YAML)
+			user.TenantID = strings.TrimSpace(user.TenantID)
 
 			if isMaster {
 				user.Roles = []string{"master"}
@@ -747,10 +763,17 @@ func buildManifestFromAnswers(answers InitAnswers) *manifest.AuthManifest {
 	}
 
 	for i, u := range answers.Users {
+		var tenantID *string
+		if strings.TrimSpace(u.TenantID) != "" {
+			tenantIDValue := strings.TrimSpace(u.TenantID)
+			tenantID = &tenantIDValue
+		}
+		
 		m.Users[i] = manifest.User{
 			Email:    u.Email,
 			Password: u.Password,
 			Name:     u.Name,
+			TenantID: tenantID,
 			Active:   true,
 			Roles:    u.Roles,
 		}
