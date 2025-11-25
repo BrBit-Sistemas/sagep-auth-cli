@@ -84,18 +84,19 @@ func (c *AuthClient) SyncApplication(ctx context.Context, m *manifest.AuthManife
 	// Headers
 	req.Header.Set("Content-Type", "application/json")
 	
-	// Autenticação: HMAC (bootstrap) OU JWT (uso normal)
-	if c.Secret != "" {
-		// Usar HMAC para bootstrap
+	// Autenticação: HMAC (obrigatório) OU JWT (opcional, quando disponível)
+	if c.Token != "" {
+		// Se tem token, usar JWT (uso normal)
+		req.Header.Set("Authorization", "Bearer "+c.Token)
+	} else if c.Secret != "" {
+		// Usar HMAC (bootstrap) - Secret é obrigatório, então sempre terá
 		timestamp := time.Now().Unix()
 		signature := calculateHMAC(payload, timestamp, c.Secret)
 		req.Header.Set("X-Signature", signature)
 		req.Header.Set("X-Timestamp", fmt.Sprintf("%d", timestamp))
-	} else if c.Token != "" {
-		// Usar JWT para uso normal
-	req.Header.Set("Authorization", "Bearer "+c.Token)
 	} else {
-		return nil, fmt.Errorf("SAGEP_AUTH_SECRET ou SAGEP_AUTH_TOKEN é obrigatório")
+		// Este caso não deveria acontecer, pois LoadConfig valida isso antes
+		return nil, fmt.Errorf("SAGEP_AUTH_SECRET é obrigatório")
 	}
 
 	// Executar requisição

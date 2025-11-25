@@ -18,7 +18,7 @@ type Config struct {
 
 // LoadConfig carrega a configuração a partir de flags, arquivo .env e variáveis de ambiente
 // Ordem de precedência: flags > .env > env vars do sistema
-// As variáveis SAGEP_AUTH_URL e (SAGEP_AUTH_SECRET ou SAGEP_AUTH_TOKEN) são obrigatórias
+// As variáveis SAGEP_AUTH_URL e SAGEP_AUTH_SECRET são obrigatórias
 func LoadConfig(authURLFlag, authTokenFlag, authSecretFlag string) (*Config, error) {
 	// Tentar carregar arquivo .env (se existir)
 	// Primeiro tenta no diretório atual, depois procura a raiz do projeto
@@ -54,23 +54,23 @@ func LoadConfig(authURLFlag, authTokenFlag, authSecretFlag string) (*Config, err
 		cfg.AuthURL = strings.TrimSuffix(envURL, "/")
 	}
 
-	// Token: flag > .env > env vars do sistema (opcional se tiver secret)
+	// Token: flag > .env > env vars do sistema (opcional)
 	if authTokenFlag != "" {
 		cfg.AuthToken = authTokenFlag
 	} else {
 		cfg.AuthToken = os.Getenv("SAGEP_AUTH_TOKEN")
 	}
 
-	// Secret: flag > .env > env vars do sistema (opcional se tiver token)
+	// Secret: flag > .env > env vars do sistema (obrigatório)
 	if authSecretFlag != "" {
 		cfg.AuthSecret = authSecretFlag
 	} else {
 		cfg.AuthSecret = os.Getenv("SAGEP_AUTH_SECRET")
 	}
 
-	// Validar que tem pelo menos um (token OU secret)
-	if cfg.AuthToken == "" && cfg.AuthSecret == "" {
-		return nil, fmt.Errorf("SAGEP_AUTH_TOKEN ou SAGEP_AUTH_SECRET é obrigatório. Configure via --token/--secret, arquivo .env ou variável de ambiente")
+	// Validar que o secret está configurado (obrigatório)
+	if cfg.AuthSecret == "" {
+		return nil, fmt.Errorf("SAGEP_AUTH_SECRET é obrigatório. Configure via --secret, arquivo .env ou variável de ambiente")
 	}
 
 	return cfg, nil

@@ -17,19 +17,19 @@ Configure as variáveis de ambiente:
 ```bash
 # Obrigatório
 export SAGEP_AUTH_URL=http://localhost:8080
-
-# Para bootstrap (criação inicial)
 export SAGEP_AUTH_SECRET=your-secret-here
 
-# Para uso normal (após bootstrap)
+# Opcional (para uso normal após bootstrap)
 export SAGEP_AUTH_TOKEN=your-jwt-token
 ```
+
+⚠️ **Importante:** O `SAGEP_AUTH_SECRET` é obrigatório e deve ser o mesmo valor do `BOOTSTRAP_SECRET` configurado no servidor `sagep-auth`.
 
 Ou crie um arquivo `.env`:
 
 ```env
 SAGEP_AUTH_URL=http://localhost:8080
-SAGEP_AUTH_SECRET=your-secret-here
+SAGEP_AUTH_SECRET=your-secret-here  # Obrigatório: deve ser igual ao BOOTSTRAP_SECRET do servidor
 ```
 
 ## 🚀 Comandos
