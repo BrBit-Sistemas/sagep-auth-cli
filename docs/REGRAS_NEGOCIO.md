@@ -27,6 +27,11 @@
 - Senha em texto claro no YAML → hasheada pelo servidor
 - Vinculado automaticamente à aplicação do manifest
 - Roles resolvidas por código (não ID)
+- `tenant_id` (opcional):
+  - **UnidadeId (Guid)**: Para usuários de unidade específica (ex: `"550e8400-e29b-41d4-a716-446655440000"`)
+  - **SecretariaTenantId (string)**: Para usuários Master/Admin de Secretaria (ex: `"sc-sejuc"`)
+  - **Omitido/null**: Para usuários globais (sem multi-tenancy)
+  - Apenas aplicado na criação de novos usuários (não atualiza usuários existentes)
 
 ## Autenticação
 

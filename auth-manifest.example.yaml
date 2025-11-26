@@ -20,57 +20,124 @@ application:
 # ============================================================================
 # Cada permissão representa uma ação ou acesso a um recurso.
 # Formato: biopass.{recurso}.{ação}
+# Subject e Action são obrigatórios para compatibilidade com CASL.js
 # ============================================================================
 
 permissions:
   # Dashboard
   - code: biopass.dashboard.view
+    subject: biopass.dashboard
+    action: view
     description: Visualizar o dashboard principal
 
   # Dispositivos (CRUD completo)
+  - code: biopass.devices.view
+    subject: biopass.devices
+    action: view
+    description: Acessar a tela de dispositivos
   - code: biopass.devices.read
+    subject: biopass.devices
+    action: read
     description: Listar e visualizar dispositivos
   - code: biopass.devices.create
+    subject: biopass.devices
+    action: create
     description: Criar novos dispositivos
   - code: biopass.devices.update
+    subject: biopass.devices
+    action: update
     description: Editar dispositivos existentes
   - code: biopass.devices.delete
+    subject: biopass.devices
+    action: delete
     description: Remover ou inativar dispositivos
 
+  # Locais de Dispositivo (CRUD completo)
+  - code: biopass.locals.view
+    subject: biopass.locals
+    action: view
+    description: Acessar a tela de locais de dispositivo
+  - code: biopass.locals.read
+    subject: biopass.locals
+    action: read
+    description: Listar e visualizar locais de dispositivo
+  - code: biopass.locals.create
+    subject: biopass.locals
+    action: create
+    description: Criar novos locais de dispositivo
+  - code: biopass.locals.update
+    subject: biopass.locals
+    action: update
+    description: Editar locais de dispositivo existentes
+  - code: biopass.locals.delete
+    subject: biopass.locals
+    action: delete
+    description: Remover ou inativar locais de dispositivo
+
   # Participantes (CRUD completo)
+  - code: biopass.participants.view
+    subject: biopass.participants
+    action: view
+    description: Acessar a tela de participantes
   - code: biopass.participants.read
+    subject: biopass.participants
+    action: read
     description: Listar e visualizar participantes
   - code: biopass.participants.create
+    subject: biopass.participants
+    action: create
     description: Criar novos participantes
   - code: biopass.participants.update
+    subject: biopass.participants
+    action: update
     description: Editar participantes existentes
   - code: biopass.participants.delete
+    subject: biopass.participants
+    action: delete
     description: Remover ou inativar participantes
 
   # Registros de Ponto
   - code: biopass.attendance.read
+    subject: biopass.attendance
+    action: read
     description: Visualizar registros de ponto/atendimento
   - code: biopass.attendance.create
+    subject: biopass.attendance
+    action: create
     description: Criar registros de ponto manualmente
   - code: biopass.attendance.update
+    subject: biopass.attendance
+    action: update
     description: Editar registros de ponto
   - code: biopass.attendance.delete
+    subject: biopass.attendance
+    action: delete
     description: Remover registros de ponto
 
   # Relatórios
   - code: biopass.reports.read
+    subject: biopass.reports
+    action: read
     description: Visualizar relatórios e análises
 
   # Usuários (administração dentro do contexto biopass)
   - code: biopass.users.read
+    subject: biopass.users
+    action: read
     description: Listar e visualizar usuários do sistema
   - code: biopass.users.manage
+    subject: biopass.users
+    action: manage
     description: Criar, editar e gerenciar usuários e suas roles dentro da aplicação
 
   # Configurações
   - code: biopass.settings.view
+    subject: biopass.settings
+    action: view
     description: Acessar configurações da aplicação
   - code: biopass.settings.manage
+    subject: biopass.settings
+    action: manage
     description: Gerenciar configurações da aplicação
 
 # ============================================================================
@@ -82,18 +149,36 @@ permissions:
 
   # Menus - Visibilidade
   - code: Menu:Dashboard
+    subject: Menu:Dashboard
+    action: view
     description: Exibir menu Dashboard
   - code: Menu:Devices
+    subject: Menu:Devices
+    action: view
     description: Exibir menu Dispositivos
+  - code: Menu:Locals
+    subject: Menu:Locals
+    action: view
+    description: Exibir menu Locais de Dispositivo
   - code: Menu:Participants
+    subject: Menu:Participants
+    action: view
     description: Exibir menu Participantes
   - code: Menu:Attendance
+    subject: Menu:Attendance
+    action: view
     description: Exibir menu Registros de Ponto
   - code: Menu:Reports
+    subject: Menu:Reports
+    action: view
     description: Exibir menu Relatórios
   - code: Menu:Users
+    subject: Menu:Users
+    action: view
     description: Exibir menu Usuários
   - code: Menu:Settings
+    subject: Menu:Settings
+    action: view
     description: Exibir menu Configurações
 
 # ============================================================================
@@ -109,8 +194,7 @@ roles:
     name: Master
     system: true
     description: Acesso total ao sistema
-    permissions:
-      - biopass.*
+    permissions: []
 
   # Role de Administrador Completo
   - code: biopass.admin
@@ -121,11 +205,19 @@ roles:
       # Dashboard
       - biopass.dashboard.view
       # Dispositivos
+      - biopass.devices.view
       - biopass.devices.read
       - biopass.devices.create
       - biopass.devices.update
       - biopass.devices.delete
+      # Locais de Dispositivo
+      - biopass.locals.view
+      - biopass.locals.read
+      - biopass.locals.create
+      - biopass.locals.update
+      - biopass.locals.delete
       # Participantes
+      - biopass.participants.view
       - biopass.participants.read
       - biopass.participants.create
       - biopass.participants.update
@@ -146,6 +238,7 @@ roles:
       # Menus
       - Menu:Dashboard
       - Menu:Devices
+      - Menu:Locals
       - Menu:Participants
       - Menu:Attendance
       - Menu:Reports
@@ -161,8 +254,13 @@ roles:
       # Dashboard
       - biopass.dashboard.view
       # Dispositivos (somente leitura)
+      - biopass.devices.view
       - biopass.devices.read
+      # Locais de Dispositivo (somente leitura)
+      - biopass.locals.view
+      - biopass.locals.read
       # Participantes (somente leitura)
+      - biopass.participants.view
       - biopass.participants.read
       # Registros de Ponto (criar e visualizar)
       - biopass.attendance.read
@@ -172,6 +270,7 @@ roles:
       # Menus
       - Menu:Dashboard
       - Menu:Devices
+      - Menu:Locals
       - Menu:Participants
       - Menu:Attendance
       - Menu:Reports
@@ -185,8 +284,13 @@ roles:
       # Dashboard
       - biopass.dashboard.view
       # Dispositivos (somente leitura)
+      - biopass.devices.view
       - biopass.devices.read
+      # Locais de Dispositivo (somente leitura)
+      - biopass.locals.view
+      - biopass.locals.read
       # Participantes (somente leitura)
+      - biopass.participants.view
       - biopass.participants.read
       # Registros de Ponto (somente leitura)
       - biopass.attendance.read
@@ -195,6 +299,7 @@ roles:
       # Menus
       - Menu:Dashboard
       - Menu:Devices
+      - Menu:Locals
       - Menu:Participants
       - Menu:Attendance
       - Menu:Reports
@@ -204,21 +309,30 @@ roles:
 # ============================================================================
 # Usuários que serão criados automaticamente ao processar o manifest.
 # As senhas são fornecidas em texto claro e serão hasheadas pelo servidor.
+#
+# tenant_id (opcional):
+# - UnidadeId (Guid): Para usuários de unidade específica
+#   Exemplo: "550e8400-e29b-41d4-a716-446655440000"
+# - SecretariaTenantId (string): Para usuários Master/Admin de Secretaria
+#   Exemplo: "sc-sejuc" (mesmo valor do TenantId da Secretaria no core-api)
+# - Omitido: Para usuários globais (sem multi-tenancy)
 # ============================================================================
 
 users:
-  # Usuário Master
+  # Usuário Master de Secretaria
   - email: master@sagep.com.br
     password: Master@123  # Senha em texto claro (será hasheada pelo servidor)
     name: Master Admin
+    tenant_id: "sc-sejuc"  # SecretariaTenantId (string) - acesso a todas unidades da secretaria
     roles:
       - master  # Role code (não ID)
     active: true  # Opcional, default: true
 
-  # Usuário Administrador de Exemplo
+  # Usuário Administrador de Exemplo (Unidade)
   - email: user@sagep.com.br
     password: User@123
     name: Usuário Exemplo
+    tenant_id: "550e8400-e29b-41d4-a716-446655440000"  # UnidadeId (Guid) - acesso apenas à unidade
     roles:
       - biopass.admin  # Pode ter múltiplas roles
     active: true

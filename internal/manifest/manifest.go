@@ -43,7 +43,11 @@ type User struct {
 	Email    string   `yaml:"email" json:"email"`
 	Password string   `yaml:"password" json:"password"`
 	Name     string   `yaml:"name" json:"name"`
-	TenantID *string  `yaml:"tenant_id,omitempty" json:"tenant_id,omitempty"` // Opcional: unidade do usuário (especialmente para primeiro usuário/bootstrap)
+	// TenantID pode ser:
+	// - UnidadeId (Guid): Para usuários de unidade específica (ex: "550e8400-e29b-41d4-a716-446655440000")
+	// - SecretariaTenantId (string): Para usuários Master/Admin de Secretaria (ex: "sc-sejuc")
+	// - Omitido/null: Para usuários globais (sem multi-tenancy)
+	TenantID *string  `yaml:"tenant_id,omitempty" json:"tenant_id,omitempty"`
 	Active   bool     `yaml:"active,omitempty" json:"active,omitempty"`
 	Roles    []string `yaml:"roles" json:"roles"`
 }
